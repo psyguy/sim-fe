@@ -16,6 +16,12 @@ run_MplusAutomation <- function(df,
 ){
 
 
+  file.suffix <- sapply(out.folder,
+                        function(dir){
+                          length(list.files(dir,pattern='inp'))
+                          }) %>%
+    as.numeric()
+
   inp.name <- paste0(out.folder,
                      file.prefix,
                      # "_biterMin",
@@ -24,7 +30,9 @@ run_MplusAutomation <- function(df,
                      # "_biterMax-",
                      # BITERATIONS.max,
                      "_th-",
-                     THIN)
+                     THIN,
+                     "_no-",
+                     file.suffix+1)
 
   prepareMplusData(df,
                    # paste0(mpa_dataset$title, ".dat")

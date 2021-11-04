@@ -1,14 +1,20 @@
 # This is the main simulator file
 
+# rm(list = ls())
 library(simulator) # this file was created under simulator version 0.2.3
+library(here)
+library(tidyverse)
+library(MplusAutomation)
 
-source("model_functions.R")
-source("method_functions.R")
-source("eval_functions.R")
+source(here("simulator-modules", "model_functions.R"))
+source(here("simulator-modules", "method_functions.R"))
+source(here("simulator-modules", "eval_functions.R"))
+
+# source(here("functions", "functions/functions_data-generating-models.R"))
 
 ## @knitr init
 
-name_of_simulation <- "experiment-mplu-hyperparameters"
+name_of_simulation <- "experiment-mplus-hyperparameters"
 
 ## @knitr main
 Sys.time()
@@ -22,10 +28,13 @@ sim <- new_simulation(name = name_of_simulation,
                  phi = 0.4,
                  vary_along = c("Model", "T", "N")) %>%
   simulate_from_model(nsim = 1,
-                      index = 50:60,
-                      parallel = list(socket_names = 3)
-  )
-) %>%
+                      index = 1:100,
+                      parallel = list(socket_names = 20)
+                      )
+)
+Sys.time()
+system.time(
+meth <- sim %>%
   run_method(list(mpa_it.1k_th.01,
                   mpa_it.1k_th.02,
                   mpa_it.1k_th.10,
@@ -37,7 +46,13 @@ sim <- new_simulation(name = name_of_simulation,
                   mpa_it.5k_th.01,
                   mpa_it.5k_th.02,
                   mpa_it.5k_th.10,
-                  mpa_it.5k_th.20))
+                  mpa_it.5k_th.20),
+             parallel = list(socket_names = 24,
+                             libraries = c("glue",
+                                           "MplusAutomation")))
+)
+Sys.time()
+
 # %>%
   # evaluate(list(his_loss, her_loss))
 
