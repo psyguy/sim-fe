@@ -806,8 +806,8 @@ dgm_make.population <- function(Model = "ChiAR(1)",
   df <- data.frame(subject = rep(1:N, each = T),
                    t = rep(1:T, times = N),
                    x = rep(NA, N*T))
-  if(is.null(seeds)) seeds <- Means
-  if(length(seeds)<=1) seeds <- seeds + Means
+  if(is.null(seeds)) seeds <- 1000*N*Means
+  if(length(seeds)<=1) seeds <- seeds + 1000*N*Means
 
   for(s in 1:N){
     x <- dgm_generator(

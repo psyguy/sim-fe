@@ -41,3 +41,4 @@ vignettes/*.pdf
 # exclude simulation files
 files/
 Mplus-files/
+*/generated-data/

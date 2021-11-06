@@ -1,8 +1,109 @@
 starting worker for localhost:11268 
-Error in unserialize(node$con) : error reading from connection
-Calls: local ... doTryCatch -> recvData -> recvData.SOCKnode -> unserialize
-In addition: Warning message:
-package 'snow' was built under R version 4.0.5 
-Execution halted
-er R version 4.0.5 
-Execution halted
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+Type: EXEC 
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+Running iteration: 7  /  8 
+Time: 2021-11-06 16:08:49 
+[1] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-1_uSeed-3315.Rdata" 
+[2] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-1_uSeed-3326.Rdata"
+[3] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-2_uSeed-3344.Rdata" 
+[4] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-2_uSeed-3355.Rdata"
+[5] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-3_uSeed-3373.Rdata" 
+[6] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-3_uSeed-3384.Rdata"
+[7] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-4_uSeed-3402.Rdata" 
+[8] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-4_uSeed-3413.Rdata"
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+  The 'cran_repo' argument in shelf() was not set, so it will use
+  cran_repo = 'https://cran.r-project.org' by default.
+
+  To avoid this message, set the 'cran_repo' argument to a CRAN
+  mirror URL (see https://cran.r-project.org/mirrors.html) or set
+  'quiet = TRUE'.
+
+Running iteration: 8  /  8 
+Time: 2021-11-06 16:09:05 
+[1] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-1_uSeed-3315.Rdata" 
+[2] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-1_uSeed-3326.Rdata"
+[3] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-2_uSeed-3344.Rdata" 
+[4] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-2_uSeed-3355.Rdata"
+[5] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-3_uSeed-3373.Rdata" 
+[6] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-3_uSeed-3384.Rdata"
+[7] "l2.dist-Gaussian_Model-BinAR_N-100_phi-0.4_T-100_Rep-4_uSeed-3402.Rdata" 
+[8] "l2.dist-Gaussian_Model-Chi2AR_N-100_phi-0.4_T-100_Rep-4_uSeed-3413.Rdata"
+Type: DONE 
+Warning messages:
+1: package 'snow' was built under R version 4.0.5 
+2: package 'librarian' was built under R version 4.0.5 
+3: package 'tidyverse' was built under R version 4.0.5 
+4: package 'ggplot2' was built under R version 4.0.5 
+5: package 'tibble' was built under R version 4.0.5 
+6: package 'tidyr' was built under R version 4.0.5 
+7: package 'dplyr' was built under R version 4.0.5 
+8: package 'forcats' was built under R version 4.0.5 
+9: package 'latex2exp' was built under R version 4.0.5 
+10: package 'cowplot' was built under R version 4.0.5 
