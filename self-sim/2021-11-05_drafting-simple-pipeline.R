@@ -3,8 +3,8 @@ shelf(tidyverse)
 shelf(here)
 shelf(primes)
 library(glue)
-source(here("functions",
-            "functions_data-generating-models.R"))
+# source(here("functions",
+#             "functions_data-generating-models.R"))
 rm(list = ls())
 
 
@@ -81,11 +81,14 @@ conditions <- list(
   phi = c(0.4)
 )
 
-n.replications <- 4
+Reps <- 4
 seed <- 0
 file.directory <- "self-sim/generated-data"
-nClust <- 4
+nClust <- 48
 sort.by <- NULL
+
+# allow Reps to be used as a vector of indexes
+if(length(Reps)<2) Reps = seq_len(Reps)
 
 dir.create(file.directory, showWarnings = FALSE)
 
@@ -98,8 +101,8 @@ on.exit({
 # soting conditions alphabetically
 conditions <- conditions[order(names(conditions))]
 
-conditions$`Initial Seed` <- seed
-conditions$Rep <- c(1:n.replications)
+conditions$sim.Seed <- seed
+conditions$Rep <- Reps
 
 n.conditions <- length(conditions)
 
@@ -113,8 +116,8 @@ factor.columns <- sapply(d.numeric, is.factor)
 d.numeric[factor.columns] <-
   sapply(d.numeric[factor.columns], as.numeric)
 
-# getting rid of non-integers
-d.integer <- d.numeric %>%
+# getting rid of non-integers and Rep
+d.integer <- d.numeric[,-n.conditions] %>%
   apply(2,
         function(x)
           x %>%
@@ -135,21 +138,25 @@ cpfs <- d.integer %>%
   unique()
 
 primes.seq <- c(cpfs,
-                primes::generate_n_primes(n.conditions + length(cpfs)))
+                primes::generate_n_primes(ncol(d.integer) + length(cpfs)))
 
 primes.seq <-
   primes.seq[!(duplicated(primes.seq) |
                  duplicated(primes.seq, fromLast = TRUE))]
 
+uSeed <- d.integer %*% primes.seq %>%
+  as.character() %>%
+  paste0(as.character(d.numeric$Rep),
+         .)
 
 d.headers <- d %>%
   mutate(
-    uSeed = d.integer %*% primes.seq,
-    `Output Directory` = file.directory,
-    `Output Name` = NA,
-    `Start time` = NA,
-    `End time` = NA,
-    `Elapsed time` = NA
+    uSeed = uSeed,
+    sim.Directory = file.directory,
+    sim.File = NA,
+    sim.StartTime = NA,
+    sim.EndTime = NA,
+    sim.ElapsedTime = NA
   )
 
 
@@ -161,7 +168,7 @@ for (r in 1:nrow(d.headers)) {
   r.values[factor.columns] <-
     sapply(r.values[factor.columns], as.character)
   # only.headers[n.conditions-1] <- "rep"
-  d.headers[r, "Output Name"] <- only.headers %>%
+  d.headers[r, "sim.File"] <- only.headers %>%
     paste0("-") %>%
     paste0(r.values) %>%
     paste(collapse = "_") %>%
@@ -188,7 +195,7 @@ rm(
   cpfs,
   factor.columns,
   n.conditions,
-  n.replications,
+  Reps,
   only.headers,
   primes.seq,
   r
@@ -224,7 +231,7 @@ Results <- snow::parLapply(cl = cl,
                                    "\nTime:",
                                    as.character(Sys.time()),
                                    "\n")
-                               print(d$`Output Name`)
+                               print(d$sim.File)
                              }
                              # arguments <- split(d[1,1:length(conditions)],
                              #                    1)[[1]] %>%
@@ -235,7 +242,7 @@ Results <- snow::parLapply(cl = cl,
                              arguments$seed <- d_i$uSeed
 
 
-                             d_i$`Start time` <- Sys.time()
+                             d_i$sim.StartTime <- Sys.time()
 
                              tryRes <-
                                try(output.dataset <- do.call(make_population, arguments))
@@ -246,9 +253,9 @@ Results <- snow::parLapply(cl = cl,
                              #   return(list(error = TRUE, errorMessage = as.character(tryRes), id = d$id[i]))
                              # }
                              save(output.dataset,
-                                  file = here::here(d_i$`Output Directory`, d_i$`Output Name`))
-                             d_i$`End time` <- Sys.time()
-                             d_i$`Elapsed time` <- d_i$`End time` - d_i$`Start time`
+                                  file = here::here(d_i$sim.Directory, d_i$sim.File))
+                             d_i$sim.EndTime <- Sys.time()
+                             d_i$sim.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
 
                              d_i
                            })
@@ -256,4 +263,4 @@ Results <- snow::parLapply(cl = cl,
 Results <- dplyr::bind_rows(Results)
 
 # Stop the cluster:
-stopCluster(cl)
+snow::stopCluster(cl)
