@@ -83,14 +83,14 @@ conditions <- list(
 
 Reps <- 4
 seed <- 0
-file.directory <- "self-sim/generated-data"
+save.directory <- "self-sim/sim_files"
 nClust <- 48
 sort.by <- NULL
 
 # allow Reps to be used as a vector of indexes
 if(length(Reps)<2) Reps = seq_len(Reps)
 
-dir.create(file.directory, showWarnings = FALSE)
+dir.create(save.directory, showWarnings = FALSE)
 
 # save global seed of the global env and set it back before leaving
 seed.old <- .Random.seed
@@ -152,7 +152,7 @@ uSeed <- d.integer %*% primes.seq %>%
 d.headers <- d %>%
   mutate(
     uSeed = uSeed,
-    sim.Directory = file.directory,
+    sim.Path = save.directory,
     sim.File = NA,
     sim.StartTime = NA,
     sim.EndTime = NA,
@@ -172,15 +172,18 @@ for (r in 1:nrow(d.headers)) {
     paste0("-") %>%
     paste0(r.values) %>%
     paste(collapse = "_") %>%
-    paste0(".Rdata")
+    paste0(".rds") %>%
+    paste0("sim_", .) # prefix for simulated datasets
 }
 
 if (is.null(sort.by))
   sort.by <- "uSeed"
 
 d <- d.headers
-d <- d %>%
-  arrange(!!as.name(sort.by))
+
+# sorting per variable - doesn't work
+# d <- d %>%
+#   arrange(!!as.name(sort.by))
 
 # getting rid of factors
 factor.columns <- sapply(d, is.factor)
@@ -204,7 +207,7 @@ rm(
 # Doing the parallel thing (ispired by parSim) ----------------------------
 
 cl <- snow::makeSOCKcluster(nClust,
-                            outfile = here::here(file.directory,
+                            outfile = here::here(save.directory,
                                                  "clusterLOG.txt"))
 debug <- TRUE
 
@@ -252,15 +255,22 @@ Results <- snow::parLapply(cl = cl,
                              #   }
                              #   return(list(error = TRUE, errorMessage = as.character(tryRes), id = d$id[i]))
                              # }
-                             save(output.dataset,
-                                  file = here::here(d_i$sim.Directory, d_i$sim.File))
+                             saveRDS(output.dataset,
+                                  file = here::here(d_i$sim.Path, d_i$sim.File))
                              d_i$sim.EndTime <- Sys.time()
                              d_i$sim.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
 
                              d_i
                            })
 
-Results <- dplyr::bind_rows(Results)
+sim_refs <- dplyr::bind_rows(Results)
 
 # Stop the cluster:
 snow::stopCluster(cl)
+
+# Save the references data frame to a file
+save(sim_refs,
+     file = here::here("self-sim", "sim_refs.Rdata"))
+write.csv(sim_refs,
+          file = here::here("self-sim", "sim_refs.csv"),
+          row.names = FALSE)
