@@ -111,8 +111,11 @@ Results <- snow::parLapply(cl = cl,
                                                                THIN = d_i$thin,
                                                                file.name = file.name)
 
+<<<<<<< HEAD
                              saveRDS(output.fit,
                                      file = here::here(d_i$fit.Path, d_i$fit.File))
+=======
+>>>>>>> main
                              d_i$fit.EndTime <- Sys.time()
                              d_i$fit.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
 
