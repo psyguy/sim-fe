@@ -28,17 +28,18 @@
 
 
 #+ initialization
-library(librarian)
-shelf(tidyverse)
-shelf(latex2exp)
-shelf(moments)
-shelf(cowplot)
-shelf(grid)
+# library(librarian)
+# shelf(tidyverse)
+# shelf(latex2exp)
+# shelf(moments)
+# shelf(cowplot)
+# shelf(grid)
 
-# library(tidyverse)
-# library(latex2exp)
-# library(moments)
-# library(cowplot)
+library(tidyverse)
+library(latex2exp)
+library(moments)
+library(cowplot)
+library(grid)
 
 # rm(list = ls())
 
