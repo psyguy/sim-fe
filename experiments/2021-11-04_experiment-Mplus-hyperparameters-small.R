@@ -14,7 +14,7 @@ source(here("simulator-modules", "eval_functions.R"))
 
 ## @knitr init
 
-name_of_simulation <- "experiment-mplus-hyperparameters-small"
+name_of_simulation <- "experiment-mplus-hyperparameters"
 
 ## @knitr main
 Sys.time()
@@ -22,14 +22,14 @@ system.time(
 sim <- new_simulation(name = name_of_simulation,
                       label = "Deciding which hyperparameters (No. iterations, thinning) to use in Mplus input.") %>%
   generate_model(make_dgm.l2gaussian, seed = 123,
-                 Model = as.list(c("ChiAR", "BinAR")),
-                 T = as.list(c(100)),
+                 Model = as.list(c("ChiAR", "BinAR", "DAR")),
+                 T = as.list(c(30, 100, 1000)),
                  N = as.list(c(100)),
                  phi = 0.4,
                  vary_along = c("Model", "T", "N")) %>%
   simulate_from_model(nsim = 1,
-                      index = 1:4,
-                      parallel = list(socket_names = 4)
+                      index = 1:100,
+                      parallel = list(socket_names = 20)
                       )
 )
 Sys.time()
@@ -47,7 +47,7 @@ meth <- sim %>%
                   mpa_it.5k_th.02,
                   mpa_it.5k_th.10,
                   mpa_it.5k_th.20),
-             parallel = list(socket_names = 4,
+             parallel = list(socket_names = 24,
                              libraries = c("glue",
                                            "MplusAutomation")))
 )
