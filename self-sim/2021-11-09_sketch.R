@@ -3,28 +3,32 @@ library(plyr)
 library(MplusAutomation)
 library(here)
 library(dplyr)
+# detach(package:dplyr)
 
-fit.files <- list.files("self-sim/fit_files/", pattern = ".rds")
+fit.files <- list.files("self-sim/experiment-b/", pattern = "fit_uSeed-")
 fit.objects <- fit.files %>%
-  here("self-sim/fit_files",.) %>%
+  here::here("self-sim/experiment-b/",.) %>%
   llply(function(x) {
     m <- readRDS(x)
-    m[["results"]][["parameters"]][["stdyx.standardized"]] %>%
+    m$fit.Dataset[["results"]][["parameters"]][["stdyx.standardized"]] %>%
       cbind(fit.File = gsub(".*/", "", x),
             .)
     },
     .progress = "tk")
 
+fit_refs <- readRDS(here::here("self-sim/experiment-b", "fit_refs.rds"))
 
-f.d <- fit.objects[-323] %>%
-  do.call(rbind,.) %>%
-  inner_join(d,.,by = "fit.File")
 
 ldply(fit.objects, dim)
 
-fit.objects[322]
+fit.objects[118]
 
-d.sim <- readRDS(here::here("self-sim/sim_files/",
+f.d <- fit.objects[-118] %>% # excluding the one for which Mplus crashed
+  do.call(rbind,.) %>%
+  inner_join(fit_refs,.,by = "fit.File")
+
+saveRDS(f.d, "fitted objects 118")
+d.sim <- readRDS(here::here("self-sim/",
                             list.files("self-sim/sim_files/",
                                        pattern = "13293")))
 
