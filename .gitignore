@@ -42,3 +42,9 @@ vignettes/*.pdf
 files/
 Mplus-files/
 */generated-data/
+
+Mplus-files-graveyard/
+
+self-sim/experiment-a_hyperparameters/fit_files/
+
+self-sim/harvests_exp-b/
