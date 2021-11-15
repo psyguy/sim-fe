@@ -15,11 +15,11 @@ run_MplusAutomation <- function(df,
   inp.name <- paste0(out.folder,
                      file.name)
 
-  prepareMplusData(df,
+  MplusAutomation::prepareMplusData(df,
                    paste0(inp.name, ".dat")
                    )
 
-  model.ar1 <- mplusObject(
+  model.ar1 <- MplusAutomation::mplusObject(
     TITLE = inp.name,
     rdata = df,
     usevariables = c("subject", "t", "x"),
@@ -52,7 +52,7 @@ run_MplusAutomation <- function(df,
 
   # st <- Sys.time()
   # print(paste(inp.name, "started at", st))
-  fit.ar1 <- mplusModeler(model.ar1,
+  fit.ar1 <- MplusAutomation::mplusModeler(model.ar1,
                           check = FALSE,
                           modelout = paste0(inp.name, ".inp"),
                           hashfilename = FALSE,
