@@ -5,15 +5,15 @@ shelf(primes)
 library(glue)
 rm(list = ls())
 
-load(here::here("self-sim", "sim_refs.Rdata"))
+# load(here::here("self-sim", "sim_refs.Rdata"))
 
-# sim_refs <- sim_refs %>%
-#   filter(l2.dist == "Gaussian")
+sim_refs <- d %>%
+  filter(T %in% c(30,100))
 
 hyperparameters <- list(iter = c(1000, 2000, 5000),
                         thin = c(1, 5, 10, 20))
 
-save.directory <- "self-sim/fit_files"
+save.directory <- "self-sim/experiment-a_DAR"
 dir.create(save.directory, showWarnings = FALSE)
 
 nClust <- 48
@@ -54,6 +54,7 @@ d[r, "fit.File"] <- only.headers %>%
 # sorting by fit.File
 
 d <- d %>%
+  filter((iter == 2000 & thin == 5) | (iter == 5000 & thin == 20)) %>%
   arrange(fit.File)
 
 
@@ -137,9 +138,9 @@ snow::stopCluster(cl)
 
 # Save the references data frame to a file
 save(fit_refs,
-     file = here::here("self-sim", "fit_refs.Rdata"))
+     file = here::here("self-sim", "fit_refs_exp-DAR.Rdata"))
 write.csv(References_sim,
-          file = here::here("self-sim", "fit_refs.csv"),
+          file = here::here("self-sim", "fit_refs_exp-DAR.csv"),
           row.names = FALSE)
 
 
