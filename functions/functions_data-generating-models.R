@@ -1,7 +1,7 @@
 #' ---
 #' title: "Data generating models"
 #' author: "Manuel Haqiqatkhah"
-#' date: "2021-10-22"
+#' date: "2021-11-20"
 #' output: github_document
 #' ---
 #'
@@ -25,6 +25,9 @@
 #'   - estimated mean, variance, skewness, and ACF(1)
 #'   - deviation of the estimated parameters from the theoretical values
 #'
+#' NOTE: Plot functions have been removed to increase performance on clusters
+#'
+#'
 
 
 #+ initialization
@@ -36,10 +39,9 @@
 # shelf(grid)
 
 library(tidyverse)
-library(latex2exp)
+# library(latex2exp)
 library(moments)
-library(cowplot)
-library(grid)
+
 
 # rm(list = ls())
 
@@ -800,9 +802,7 @@ dgm_make.population <- function(Model = "ChiAR(1)",
                                 phi = 0.4,
                                 seeds = NULL
 ){
-  # pa <- list(...)
-  # print(pa)
-  # print(str(pa))
+
   N <- length(Means)
   df <- data.frame(subject = rep(1:N, each = T),
                    t = rep(1:T, times = N),
@@ -827,310 +827,63 @@ dgm_make.population <- function(Model = "ChiAR(1)",
   return(df)
 }
 
-#' Now we need to write plotting functions(s)
-#'
+# Make population ---------------------------------------------------------
 
-#+ dgmPlot
+make_population <- function(Model = "DAR",
+                            T = 100,
+                            N = 100,
+                            phi = 0.4,
+                            l2.distribution = "Gaussian",
+                            seed = 0) {
+  # save global seed of the global env and set it back before leaving
+  seed.old <- .Random.seed
+  on.exit({
+    .Random.seed <<- seed.old
+  })
+  set.seed(seed)
 
-## %%%%%%%%%%%%%%%%
-## plotting Autocorrelation function
+  if (tolower(Model) == "chiar" | tolower(Model) == "chi2ar") {
+    model.name <- "Chi2AR"
+    lev2.Mean <- 10
+    lev2.Variance <- 10
+    chi2.df <- 5
+  }
+  if (tolower(Model) == "binar") {
+    model.name <- "BinAR"
+    lev2.Mean <- 2
+    lev2.Variance <- 1
+    chi2.df <- 2.9
+  }
+  if (tolower(Model) == "dar") {
+    model.name <- "DAR"
+    lev2.Mean <- 2
+    lev2.Variance <- 1
+    chi2.df <- 2.9
+  }
 
-dgm_plot.acf <- function(dgm.obj,
-                         lag.max = 10,
-                         add.title = FALSE,
-                         p.color = c("dodgerblue3"),
-                         size = 1.5){
+  # sampling within-person mean from level 2 distribution
+  if (l2.distribution == "Gaussian")
+    Means <- rnorm(2 * N, lev2.Mean, sqrt(lev2.Variance))
+  if (l2.distribution == "Chi2")
+    Means <- rchisq(2 * N, chi2.df)
 
-  l <- 0:lag.max
-  d <- data.frame(
-    l = l,
-    a1 = stats::acf(dgm.obj$x,
-                    lag.max = lag.max,
-                    plot = FALSE)$acf
+  # removing out-of-bounds means
+  Means[Means < 0] <- NA
+  Means[Means > 100] <- NA
+  if (model.name == "BinAR" |
+      model.name == "DAR")
+    Means[Means > 10] <- NA
+
+  # keeping N samples from the in-bound means
+  Means <- Means %>% na.omit() %>% sample(N)
+
+
+  sample_df <- dgm_make.population(
+    Model = Model,
+    Means = Means,
+    T = T,
+    phi = phi,
+    seeds = NULL
   )
-
-  l.e <- seq(0, lag.max, 0.05)
-  d.e <- data.frame(l.e = l.e,
-                    e1 = dgm.obj$Model.Parameters$phi ^ l.e
-  )
-
-  plot.acf <- ggplot(d, aes(x = l, y = a1)) +
-    geom_segment(aes(
-      x = l,
-      xend = l,
-      y = 0,
-      yend = a1
-    ),
-    size = size[1],
-    color = p.color[1]) +
-    # exponential fit
-    geom_line(
-      data = d.e,
-      aes(x = l.e, y = e1),
-      linetype = "dashed",
-      color = "yellowgreen",
-      size = 1
-    ) +
-
-    geom_hline(aes(yintercept = 0),
-               size = 0.5) +
-    # annotate(
-    #   "label",
-    #   x = 1.75,
-    #   y = d$a1[2],
-    #   label = unname(TeX(paste0(
-    #     "$\\rho = ", round(d$a1[2], 2), "$"
-    #   ))),
-    #   color = p.color[1]
-    # ) +
-
-    theme(legend.position = "none") +
-    xlab("Lag") +
-    ylab("Autocorrelation function") +
-    # ggtitle("Autocorrelation function of X(t)") +
-    theme(# axis.title.x=element_blank(),
-      #     axis.text.x=element_blank(),
-      #     axis.ticks.x=element_blank(),
-      axis.line = element_line(colour = "black"),
-      panel.background = element_blank())
-
-  if(add.title)
-    plot.acf <- plot.acf + ggtitle(TeX(dgm.obj$Model.Description))
-
-
-  return(plot.acf)
+  return(sample_df)
 }
-
-
-## %%%%%%%%%%%%%%%%
-## plotting density histogram
-
-dgm_plot.hist <- function(dgm.obj,
-                          add.title = FALSE,
-                          p.color = c("lightcyan4"),
-                          alpha = 0.9){
-
-  vals <- dgm.obj$x
-
-  out.of.bound <- sum(vals<0) + sum(vals>dgm.obj$Model.Parameters$k)
-  out.of.bound <- round(100*out.of.bound/dgm.obj$Model.Parameters$T,0)
-
-  color_mean <- c("deepskyblue1","yellowgreen")
-  breaks <- seq(0,1,0.1)*dgm.obj$Model.Parameters$k
-  binwidth <- ifelse(is.null(dgm.obj$Model.Parameters$theta),
-                     # 1+3.322*log10(dgm.obj$Model.Parameters$T),
-                     dgm.obj$Model.Parameters$T^(1/3)*2, # Rice's rule
-                     # 3.49*sqrt(var(dgm.obj$x))*dgm.obj$Model.Parameters$T^(-1/3),
-                     dgm.obj$Model.Parameters$k)
-
-
-  d <- data.frame(t=1:dgm.obj$Model.Parameters$T,
-                  vals = vals)
-
-  plot.hist <- ggplot(d, aes(x = vals)) +
-    geom_histogram(aes(y = ..density..),
-                   binwidth = 1,
-                   fill = p.color[1],
-                   alpha = alpha) +
-
-    geom_vline(aes(xintercept = dgm.obj$Model.Parameters$Mean),
-               colour="yellowgreen",
-               linetype="dotted",
-               size = 1) +
-    geom_vline(aes(xintercept = dgm.obj$Empirical.Parameters$Mean),
-               colour="firebrick",
-               linetype="dotdash",
-               size = 1) +
-
-    # annotate("label",
-    #          x = dgm.obj$Model.Parameters$Mean,
-    #          y = 0.1,
-    #          label = TeX("$\\mu_{(implied)}$"),
-    #          color = color_mean[1]) +
-    annotate("label",
-             x = dgm.obj$Empirical.Parameters$Mean,
-             y = Inf,#0.01,
-             vjust = 1,
-             label = TeX("$\\mu_{empirical}$"),
-             color = "firebrick") +
-
-    xlab(TeX("$X_t$")) +
-    ylab("Density") +
-
-    # xlim(-0.1*dgm.obj$Model.Parameters$k,
-    #  1.1*dgm.obj$Model.Parameters$k) +
-    scale_x_continuous(limits = c(-0.1*dgm.obj$Model.Parameters$k,
-                                  1.1*dgm.obj$Model.Parameters$k),
-                       breaks = breaks,
-                       expand = c(0, 0)) +
-    scale_y_continuous(expand = expansion(mult = c(0, .1))) +
-    theme(
-      # axis.title.y = element_blank(),
-      # axis.text.y = element_blank(),
-      # axis.ticks.y = element_blank(),
-      axis.line = element_line(colour = "black"),
-      panel.background = element_blank()
-    )
-
-  if(out.of.bound)
-    plot.hist <- plot.hist +
-    annotate("label",
-             x = Inf,# 0.8*dgm.obj$Model.Parameters$k,
-             y = Inf,#0.01,
-             vjust = 1,
-             hjust = 1,
-             label = paste0(out.of.bound,
-                            "% of values out of bound"),
-             color = "slateblue3")
-
-  if(add.title)
-    plot.hist <- plot.hist + ggtitle(TeX(dgm.obj$Model.Description))
-
-  return(plot.hist)
-}
-
-dgm_plot.timeseries <- function(dgm.obj,
-                                limit.t = 200,
-                                add.title = FALSE,
-                                p.color = c("slateblue3"),
-                                size = 1.5){
-
-  limit.t <- min(limit.t, dgm.obj$Model.Parameters$T)
-  breaks.t <- seq(0,1,0.1)*limit.t
-
-  ts <- data.frame(t = 1:dgm.obj$Model.Parameters$T,
-                   value = dgm.obj$x)[1:limit.t,]
-
-  # time series plot
-  plot.timeseries <- ts %>%
-    ggplot(aes(x = t, y = value)) +
-    geom_line(color = p.color[1]) +
-
-    scale_x_continuous(breaks = breaks.t,
-                       expand = c(0, limit.t*0.05)) +
-    scale_y_continuous(breaks = seq(0,1,0.1)*dgm.obj$Model.Parameters$k,
-                       expand = expansion(mult = c(0, .1))) +
-
-    geom_hline(aes(yintercept = dgm.obj$Empirical.Parameters$Mean),
-               colour="firebrick",
-               linetype="dotdash",
-               size = 1) +
-
-    # annotate("label",
-    #          x = dgm.obj$Model.Parameters$Mean,
-    #          y = 0.1,
-    #          label = TeX("$\\mu_{(implied)}$"),
-    #          color = color_mean[1]) +
-    annotate("label",
-             x = 0.2*limit.t,
-             y = dgm.obj$Empirical.Parameters$Mean,
-             label = TeX("$\\mu_{empirical}$"),
-             color = "firebrick") +
-    xlab("time") +
-    ylab(TeX("$X_t$")) +
-
-    theme(
-      # axis.title.y = element_blank(),
-      # axis.text.y = element_blank(),
-      # axis.ticks.y = element_blank(),
-      axis.line = element_line(colour = "black"),
-      panel.background = element_blank()
-    )
-
-  if(add.title)
-    plot.timeseries <- plot.timeseries + ggtitle(TeX(dgm.obj$Model.Description))
-
-
-  return(plot.timeseries)
-}
-
-## %%%%%%%%%%%%%%%
-## plotting side-by-side
-## %%%%%%%%%%%%%%%
-
-dgm_plot.profile <- function(dgm.obj,
-                             p.color = "lavenderblush4",
-                             lag.max = 20,
-                             limit.t = 300){
-
-  p_right <- plot_grid(dgm_plot.timeseries(dgm.obj,
-                                           limit.t = limit.t,
-                                           p.color = p.color),
-                       dgm_plot.acf(dgm.obj,
-                                    lag.max = lag.max,
-                                    p.color = p.color),
-                       align = "v",
-                       axis = "r",
-                       nrow = 2,
-                       # labels = "AUTO",
-                       rel_heights = c(1, 1))
-
-  p_profile <- plot_grid(dgm_plot.hist(dgm.obj,
-                                       p.color = p.color),
-                         p_right,
-                         # align = "h", axis = "b",
-                         # labels = "AUTO",
-                         rel_widths = c(2, 1))
-
-  title <- ggdraw() +
-    draw_label(
-      TeX(dgm.obj$Model.Description),
-      # fontface = 'bold',
-      x = 0,
-      hjust = 0
-    ) +
-    theme(
-      # add margin on the left of the drawing canvas,
-      # so title is aligned with left edge of first plot
-      plot.margin = margin(0, 0, 0, 7)
-    )
-
-
-  output <- plot_grid(
-    title, p_profile,
-    ncol = 1,
-    # rel_heights values control vertical title margins
-    rel_heights = c(0.1, 1)
-  )
-
-  return(output)
-
-}
-
-
-## %%%%%%%%%%%%
-## samples
-## %%%%%%%%%%%%
-#
-# t1 <- dgm_generator(Mean = 50,
-#                     Skewness = .2,
-#                     phi = 0.2999,
-#                     T = 100000,
-#                     seed = 1)
-#
-# t2 <- dgm_generator(Mean = 44.5,
-#                     Skewness = 0.4,
-#                     phi = 0.1,
-#                     T = 100,
-#                     seed = 1)
-#
-# t3 <- dgm_generator(Mean = 0.3,
-#                     Skewness = 0.04,
-#                     phi = 0.1,
-#                     T = 500,
-#                     seed = 1,
-#                     Model = "BinAR")
-#
-# t3 <- dgm_generator(Mean = 0.3,
-#                     Skewness = 0.04,
-#                     phi = 0.81,
-#                     T = 100,
-#                     seed = 1,
-#                     Model = "DAR")
-#
-# dgm_plot.timeseries(t1,add.title = TRUE)
-# dgm_plot.hist(t2)
-# dgm_plot.acf(t3)
-#
-# dgm_plot.profile(t2, p.color = "lavenderblush4")
-

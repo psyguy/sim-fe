@@ -102,4 +102,4 @@ plot(t.snow)
 # saving the extracted parameter estimates --------------------------------
 
 
-saveRDS(results, "fit-harvest_1-to-700.rds")
+saveRDS(results, "fit-harvest_all.rds")

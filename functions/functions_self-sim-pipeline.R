@@ -16,68 +16,6 @@ rm(list = ls())
 source(here::here("functions",
                   "functions_data-generating-models.R"))
 
-# Make population ---------------------------------------------------------
-
-make_population <- function(Model = "DAR",
-                            T = 100,
-                            N = 100,
-                            phi = 0.4,
-                            l2.distribution = "Gaussian",
-                            seed = 0) {
-  # save global seed of the global env and set it back before leaving
-  seed.old <- .Random.seed
-  on.exit({
-    .Random.seed <<- seed.old
-  })
-  set.seed(seed)
-
-  if (tolower(Model) == "chiar" | tolower(Model) == "chi2ar") {
-    model.name <- "Chi2AR"
-    lev2.Mean <- 10
-    lev2.Variance <- 10
-    chi2.df <- 5
-  }
-  if (tolower(Model) == "binar") {
-    model.name <- "BinAR"
-    lev2.Mean <- 2
-    lev2.Variance <- 1
-    chi2.df <- 2.9
-  }
-  if (tolower(Model) == "dar") {
-    model.name <- "DAR"
-    lev2.Mean <- 2
-    lev2.Variance <- 1
-    chi2.df <- 2.9
-  }
-
-  # sampling within-person mean from level 2 distribution
-  if (l2.distribution == "Gaussian")
-    Means <- rnorm(2 * N, lev2.Mean, sqrt(lev2.Variance))
-  if (l2.distribution == "Chi2")
-    Means <- rchisq(2 * N, chi2.df)
-
-  # removing out-of-bounds means
-  Means[Means < 0] <- NA
-  Means[Means > 100] <- NA
-  if (model.name == "BinAR" |
-      model.name == "DAR")
-    Means[Means > 10] <- NA
-
-  # keeping N samples from the in-bound means
-  Means <- Means %>% na.omit() %>% sample(N)
-
-
-  sample_df <- dgm_make.population(
-    Model = Model,
-    Means = Means,
-    T = T,
-    phi = phi,
-    seeds = NULL
-  )
-  return(sample_df)
-}
-
-
 # Making table of conditions ----------------------------------------------
 
 make_sim_refs <-
@@ -93,6 +31,8 @@ make_sim_refs <-
            save.refs.filename = paste("sim_refs",
                                       Sys.Date()),
            prefix.sim.datasets = "sim_"){
+
+    dir.create(save.directory, showWarnings = FALSE)
 
 # allow Reps to be used as a vector of indexes
     if(length(Reps)<2) Reps = seq_len(Reps)
@@ -218,7 +158,6 @@ make_fit_refs <-
 
     dir.create(save.directory, showWarnings = FALSE)
 
-    nClust <- 48
 
     h <- hyperparameters %>%
       expand.grid(stringsAsFactors = TRUE)
@@ -270,15 +209,15 @@ make_fit_refs <-
 
 # Simulate in parallel ----------------------------------------------------
 
-make_sim_parallel <-
+do_sim_parallel <-
   function(sim_refs,
            nClust = 48,
            save.directory = "self-sim",
            alternative.sim.Path = NULL,
            clusterLOG.filename = paste("clusterLOG",
-                                      Sys.Date()),
+                                       Sys.Date()),
            sleeptime = 1 # seconds to wait before runnig clusters
-           ){
+  ){
 
     cl <- snow::makeSOCKcluster(nClust,
                                 outfile = here::here(save.directory,
@@ -292,69 +231,81 @@ make_sim_parallel <-
 
     snow::clusterExport(cl,
                         c("d",
-                          "make_population",
+                          #"make_population",
                           "alternative.sim.Path",
                           "debug"),
                         envir = environment())
+    t.snow <- snow::snow.time({
 
-    snow::clusterApplyLB(cl = cl,
-                         seq_len(nrow(d)),
-                         function(i) {
+      snow::clusterApplyLB(cl = cl,
+                           seq_len(nrow(d)),
+                           function(i) {
 
-                           Sys.sleep(sleeptime*(i %% nClust))
+                             Sys.sleep(sleeptime*(i %% nClust))
 
-                           if (debug) {
-                             cat("\nRunning iteration:",
-                                 i,
-                                 " / ",
-                                 nrow(d),
-                                 "\nTime:",
-                                 as.character(Sys.time()),
-                                 "\n")
-                             print(d$sim.File)
-                           }
+                             source(here::here("functions",
+                                               "functions_data-generating-models.R"))
+                             library(tidyverse)
+
+                             # if (debug) {
+                             #   cat("\nRunning iteration:",
+                             #       i,
+                             #       " / ",
+                             #       nrow(d),
+                             #       "\nTime:",
+                             #       as.character(Sys.time()),
+                             #       "\n")
+                             #   print(d$sim.File)
+                             # }
 
 
-                           d_i <- as.list(d[i, ])
-                           arguments <-
-                             as.list(d_i[2:(length(d_i) - 4)])
-                           arguments$seed <- d_i$uSeed
+                             d_i <- as.list(d[i, ])
+                             arguments <-
+                               as.list(d_i[2:(length(d_i) - 4)])
+                             arguments$seed <- d_i$uSeed
 
-                           sim.Path <- ifelse(is.null(alternative.sim.Path),
-                                              d_i$sim.Path,
-                                              alternative.sim.Path)
+                             sim.Path <- ifelse(is.null(alternative.sim.Path),
+                                                d_i$sim.Path,
+                                                alternative.sim.Path)
 
-                           sim.StartTime <- Sys.time()
+                             sim.StartTime <- Sys.time()
 
-                           tryRes <-
-                             try(output.dataset <- do.call(make_population,
-                                                           arguments))
-                           # if (is(tryRes,"try-error")){
-                           #   if (debug){
-                           #     browser()
-                           #   }
-                           #   return(list(error = TRUE, errorMessage = as.character(tryRes), id = d$id[i]))
-                           # }
-                           d_i$sim.Dataset <- tryRes
-                           d_i$sim.StartTime <- sim.StartTime
-                           d_i$sim.EndTime <- Sys.time()
-                           d_i$sim.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
+                             # tryRes <-
+                             #   try(
 
-                           saveRDS(d_i,
-                                   file = here::here(sim.Path,
-                                                     d_i$sim.File))
+                                 output.dataset <- do.call(make_population,
+                                                           arguments)
+                               # )
+                             # if (is(tryRes,"try-error")){
+                             #   if (debug){
+                             #     browser()
+                             #   }
+                             #   return(list(error = TRUE, errorMessage = as.character(tryRes), id = d$id[i]))
+                             # }
+                             d_i$sim.Dataset <- output.dataset
+                             d_i$sim.StartTime <- sim.StartTime
+                             d_i$sim.EndTime <- Sys.time()
+                             d_i$sim.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
 
-                         })
+                             saveRDS(d_i,
+                                     file = here::here(sim.Path,
+                                                       d_i$sim.File))
 
+                           })
+
+    })
     # Stop the cluster:
     snow::stopCluster(cl)
+
+    return(t.snow)
 
   }
 
 
+
 # Fit in parallel ---------------------------------------------------------
 
-make_sim_parallel <-
+do_fit_parallel <-
   function(sim_refs,
            nClust = 48,
            save.directory = "self-sim",
@@ -381,59 +332,69 @@ make_sim_parallel <-
                           "debug"),
                         envir = environment())
 
-    snow::clusterApplyLB(cl = cl,
-                         seq_len(nrow(d)),
-                         function(i) {
+    t.snow <- snow.time({
 
-                           Sys.sleep(sleeptime*(i %% nClust))
+      snow::clusterApplyLB(cl = cl,
+                           seq_len(nrow(d)),
+                           function(i) {
 
-                           if (debug) {
-                             cat("\nRunning iteration:",
-                                 i,
-                                 " / ",
-                                 nrow(d),
-                                 "\nTime:",
-                                 as.character(Sys.time()),
-                                 "\n")
-                             print(d$sim.File)
-                           }
+                             Sys.sleep(sleeptime*(i %% nClust))
+
+                             if (debug) {
+                               cat("\nRunning iteration:",
+                                   i,
+                                   " / ",
+                                   nrow(d),
+                                   "\nTime:",
+                                   as.character(Sys.time()),
+                                   "\n")
+                               print(d$sim.File)
+                             }
 
 
-                           d_i <- as.list(d[i, ])
-                           arguments <-
-                             as.list(d_i[2:(length(d_i) - 4)])
-                           arguments$seed <- d_i$uSeed
+                             d_i <- as.list(d[i, ])
+                             arguments <-
+                               as.list(d_i[2:(length(d_i) - 4)])
+                             arguments$seed <- d_i$uSeed
 
-                           sim.Path <- ifelse(is.null(alternative.sim.Path),
-                                              d_i$sim.Path,
-                                              alternative.sim.Path)
+                             sim.Path <- ifelse(is.null(alternative.sim.Path),
+                                                d_i$sim.Path,
+                                                alternative.sim.Path)
 
-                           sim.StartTime <- Sys.time()
+                             sim.StartTime <- Sys.time()
 
-                           tryRes <-
-                             try(output.dataset <- do.call(make_population,
-                                                           arguments))
-                           # if (is(tryRes,"try-error")){
-                           #   if (debug){
-                           #     browser()
-                           #   }
-                           #   return(list(error = TRUE, errorMessage = as.character(tryRes), id = d$id[i]))
-                           # }
-                           d_i$sim.Dataset <- tryRes
-                           d_i$sim.StartTime <- sim.StartTime
-                           d_i$sim.EndTime <- Sys.time()
-                           d_i$sim.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
+                             # tryRes <-
+                             #   try(
+                             library(tidyverse)
+                             output.dataset <- do.call(make_population,
+                                                       arguments)
+                             # })
+                             # if (is(tryRes,"try-error")){
+                             #   if (debug){
+                             #     browser()
+                             #   }
+                             #   return(list(error = TRUE, errorMessage = as.character(tryRes), id = d$id[i]))
+                             # }
+                             d_i$sim.Dataset <- output.dataset
+                             d_i$sim.StartTime <- sim.StartTime
+                             d_i$sim.EndTime <- Sys.time()
+                             d_i$sim.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
 
-                           saveRDS(d_i,
-                                   file = here::here(sim.Path,
-                                                     d_i$sim.File))
+                             saveRDS(d_i,
+                                     file = here::here(sim.Path,
+                                                       d_i$sim.File))
 
-                         })
+                           })
 
+    })
     # Stop the cluster:
     snow::stopCluster(cl)
 
+    return(t.snow)
+
   }
+
+
 
 
 
