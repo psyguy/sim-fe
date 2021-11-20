@@ -214,14 +214,15 @@ do_sim_parallel <-
            nClust = 48,
            save.directory = "self-sim",
            alternative.sim.Path = NULL,
-           clusterLOG.filename = paste("clusterLOG",
-                                       Sys.Date()),
+           clusterLOG.filename = paste0("sim_clusterLOG_",
+                                       Sys.Date(),
+                                       ".txt"),
            sleeptime = 1 # seconds to wait before runnig clusters
   ){
 
     cl <- snow::makeSOCKcluster(nClust,
                                 outfile = here::here(save.directory,
-                                                     "sim_clusterLOG.txt"))
+                                                     clusterLOG.filename))
     debug <- TRUE
 
     d <- sim_refs
@@ -306,33 +307,33 @@ do_sim_parallel <-
 # Fit in parallel ---------------------------------------------------------
 
 do_fit_parallel <-
-  function(sim_refs,
+  function(fit_refs,
            nClust = 48,
            save.directory = "self-sim",
-           alternative.sim.Path = NULL,
-           clusterLOG.filename = paste("clusterLOG",
-                                       Sys.Date()),
+           alternative.fit.Path = NULL,
+           clusterLOG.filename = paste0("sim_clusterLOG_",
+                                        Sys.Date(),
+                                        ".txt"),
            sleeptime = 1 # seconds to wait before runnig clusters
   ){
 
     cl <- snow::makeSOCKcluster(nClust,
                                 outfile = here::here(save.directory,
-                                                     "sim_clusterLOG.txt"))
+                                                     clusterLOG.filename))
     debug <- TRUE
 
-    d <- sim_refs
+    d <- fit_refs
 
 
     ## Start clusters:
 
     snow::clusterExport(cl,
                         c("d",
-                          "make_population",
-                          "alternative.sim.Path",
+                          #"make_population",
+                          "alternative.fit.Path",
                           "debug"),
                         envir = environment())
-
-    t.snow <- snow.time({
+    t.snow <- snow::snow.time({
 
       snow::clusterApplyLB(cl = cl,
                            seq_len(nrow(d)),
@@ -340,53 +341,61 @@ do_fit_parallel <-
 
                              Sys.sleep(sleeptime*(i %% nClust))
 
-                             if (debug) {
-                               cat("\nRunning iteration:",
-                                   i,
-                                   " / ",
-                                   nrow(d),
-                                   "\nTime:",
-                                   as.character(Sys.time()),
-                                   "\n")
-                               print(d$sim.File)
-                             }
+                             source(here::here("functions",
+                                               "functions_Mplus.R"))
 
+                             # if (debug) {
+                             #   cat("\nRunning iteration:",
+                             #       i,
+                             #       " / ",
+                             #       nrow(d),
+                             #       "\nTime:",
+                             #       as.character(Sys.time()),
+                             #       "\n")
+                             #   print(d$sim.File)
+                             # }
 
                              d_i <- as.list(d[i, ])
-                             arguments <-
-                               as.list(d_i[2:(length(d_i) - 4)])
-                             arguments$seed <- d_i$uSeed
 
-                             sim.Path <- ifelse(is.null(alternative.sim.Path),
-                                                d_i$sim.Path,
-                                                alternative.sim.Path)
+                             fit.StartTime <- Sys.time()
 
-                             sim.StartTime <- Sys.time()
+                             df <- readRDS(file = here::here(d_i$sim.Path,
+                                                             d_i$sim.File))$sim.Dataset
+                             file.name <- gsub(".rds", "", d_i$fit.File)
 
-                             # tryRes <-
-                             #   try(
-                             library(tidyverse)
-                             output.dataset <- do.call(make_population,
-                                                       arguments)
-                             # })
-                             # if (is(tryRes,"try-error")){
-                             #   if (debug){
-                             #     browser()
-                             #   }
-                             #   return(list(error = TRUE, errorMessage = as.character(tryRes), id = d$id[i]))
-                             # }
-                             d_i$sim.Dataset <- output.dataset
-                             d_i$sim.StartTime <- sim.StartTime
-                             d_i$sim.EndTime <- Sys.time()
-                             d_i$sim.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
+                             tryRes <-
+                               try(
+                                 output.fit <- run_MplusAutomation(df = df,
+                                                                   PROCESSORS = 1,
+                                                                   BITERATIONS.min = d_i$iter,
+                                                                   THIN = d_i$thin,
+                                                                   file.name = file.name)
+                               )
+
+                             d_i$fit.Dataset <- tryRes # output.fit
+                             d_i$fit.StartTime <- fit.StartTime
+                             d_i$fit.EndTime <- Sys.time()
+                             d_i$fit.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
+
+                             fit.Path <- ifelse(is.null(alternative.fit.Path),
+                                                d_i$fit.Path,
+                                                alternative.fit.Path)
 
                              saveRDS(d_i,
-                                     file = here::here(sim.Path,
-                                                       d_i$sim.File))
+                                     file = here::here(fit.Path,
+                                                       d_i$fit.File))
+
+                             # return(paste("Running iteration:",
+                             #              i,
+                             #              " / ",
+                             #              nrow(d),
+                             #              "Time:",
+                             #              as.character(Sys.time())))
 
                            })
 
     })
+
     # Stop the cluster:
     snow::stopCluster(cl)
 
