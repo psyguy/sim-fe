@@ -48,3 +48,7 @@ Mplus-files-graveyard/
 self-sim/experiment-a_hyperparameters/fit_files/
 
 self-sim/harvests_exp-b/
+
+Mplus-files_crashed/
+
+Mplus_check-chains/
