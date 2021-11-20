@@ -13,7 +13,7 @@ sim_refs <- sim_refs.big %>%
 
 Sys.time()
 system.time(
-t.sim <- do_sim_parallel(sim_refs = sim_refs[1:3,],
+t.sim <- do_sim_parallel(sim_refs = sim_refs,
                            save.directory = "self-sim_dar"
                            )
 )
