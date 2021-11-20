@@ -76,14 +76,15 @@ make_population <- function(Model = "DAR",
 conditions <- list(
   T = c(30, 100, 1000),
   N = c(100),
-  Model = c("BinAR", "Chi2AR"),
+  Model = c("BinAR", "Chi2AR", "DAR"),
+  # Model = c("BinAR", "Chi2AR"),
   l2.dist = c("Gaussian", "Chi2"),
   phi = c(0.4)
 )
 
 Reps <- 4
 seed <- 0
-save.directory <- "self-sim/sim_files"
+save.directory <- "self-sim/experiment-a_DAR"
 nClust <- 48
 sort.by <- NULL
 
@@ -203,6 +204,8 @@ rm(
   primes.seq,
   r
 )
+
+d <- d %>% filter(Model == "DAR")
 
 # Doing the parallel thing (ispired by parSim) ----------------------------
 
