@@ -309,9 +309,10 @@ do_sim_parallel <-
 do_fit_parallel <-
   function(fit_refs,
            nClust = 48,
+           nPROC = 1,
            save.directory = "self-sim",
            alternative.fit.Path = NULL,
-           clusterLOG.filename = paste0("sim_clusterLOG_",
+           clusterLOG.filename = paste0("fit_clusterLOG_",
                                         Sys.Date(),
                                         ".txt"),
            sleeptime = 1 # seconds to wait before runnig clusters
@@ -331,6 +332,7 @@ do_fit_parallel <-
                         c("d",
                           #"make_population",
                           "alternative.fit.Path",
+                          "nPROC",
                           "debug"),
                         envir = environment())
     t.snow <- snow::snow.time({
@@ -339,10 +341,11 @@ do_fit_parallel <-
                            seq_len(nrow(d)),
                            function(i) {
 
-                             Sys.sleep(sleeptime*(i %% nClust))
+                             if(i<=nClust) Sys.sleep(sleeptime*i)
 
                              source(here::here("functions",
                                                "functions_Mplus.R"))
+                             library(tidyverse)
 
                              # if (debug) {
                              #   cat("\nRunning iteration:",
@@ -366,7 +369,7 @@ do_fit_parallel <-
                              tryRes <-
                                try(
                                  output.fit <- run_MplusAutomation(df = df,
-                                                                   PROCESSORS = 1,
+                                                                   PROCESSORS = nPROC,
                                                                    BITERATIONS.min = d_i$iter,
                                                                    THIN = d_i$thin,
                                                                    file.name = file.name)
@@ -375,7 +378,7 @@ do_fit_parallel <-
                              d_i$fit.Dataset <- tryRes # output.fit
                              d_i$fit.StartTime <- fit.StartTime
                              d_i$fit.EndTime <- Sys.time()
-                             d_i$fit.ElapsedTime <- d_i$sim.EndTime - d_i$sim.StartTime
+                             d_i$fit.ElapsedTime <- d_i$fit.EndTime - d_i$fit.StartTime
 
                              fit.Path <- ifelse(is.null(alternative.fit.Path),
                                                 d_i$fit.Path,

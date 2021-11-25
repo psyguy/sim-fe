@@ -40,12 +40,18 @@ vignettes/*.pdf
 
 # exclude simulation files
 files/
-Mplus-files/
+Mplus-files*/
 */generated-data/
 
 Mplus-files-graveyard/
 
 self-sim/experiment-a_hyperparameters/fit_files/
+self-sim/experiment-a_hyperparameters/sim_files/
+self-sim/experiment-a_DAR/
+self-sim_dar/
+self-sim/experiment-b/
+self-sim/crashed jobs/
+self-sim/fit_files - incomplete/
 
 self-sim/harvests_exp-b/
 
