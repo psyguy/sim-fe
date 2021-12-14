@@ -411,6 +411,80 @@ dgm_dar <- function(...){
   return(output)
 }
 
+#+ PoDAR1
+dgm_podar <- function(...){
+
+  pa <- list(...)
+
+  if(is.list(pa$pa)) pa <- pa$pa
+
+  ## setting default seed if not given
+  if(is.null(pa$tau)) pa$tau <- 0.7
+  if(is.null(pa$lambda)) pa$lambda <- 0.5
+  if(is.null(pa$k)) pa$k <- 6
+  if(is.null(pa$T)) pa$T <- 100
+  if(is.null(pa$seed)) pa$seed <- 0
+
+
+  ## drawing the first sample x_1
+  set.seed(pa$seed)
+  x = rep(NA, pa$T)
+  x[1] <- rpois(n = 1,
+                lambda = pa$lambda)
+
+  ## making the rest of th time series
+  for (t in 2:pa$T){
+    V_t <- rbinom(n = 1,
+                  size = 1,
+                  prob = pa$tau)
+    Z_t <- rpois(n = 1,
+                 lambda = pa$lambda)
+    x[t] <- V_t*x[t-1] + (1-V_t)*Z_t
+  }
+
+  ## quick output of raw time series without book-keeping variables/parameters
+  if(!is.null(pa$only.ts) & pa$only.ts==TRUE) return(x)
+
+  Empirical.Parameters = list(Mean = mean(x),
+                              Variance = var(x),
+                              Skewness = moments::skewness(x),
+                              AR = acf(x, lag.max = 1, plot = FALSE)$acf[2]
+  )
+
+  ## making a LaTeX-ready list description of the model
+  Model.Description <- paste0("$PoDAR(1):",
+                              "\\; \\mu = ",
+                              round(pa$Mean,2),
+                              "(",
+                              round(Empirical.Parameters$Mean,2),
+                              ")",
+                              ",\\; \\gamma = ",
+                              round(pa$Skewness,2),
+                              "(",
+                              round(Empirical.Parameters$Skewness,2),
+                              ")",
+                              "\\; \\tau = ",
+                              round(pa$tau,3),
+                              "(",
+                              round(Empirical.Parameters$AR,2),
+                              ")",
+                              ",\\; \\lambda = ",
+                              round(pa$lambda,3),
+                              ",\\; T = ",
+                              pa$T,
+                              "$")
+
+
+  ## making the output object
+  output <- list(x = x,
+                 Model.Description = Model.Description,
+                 Model.Parameters = pa,
+                 Empirical.Parameters = Empirical.Parameters
+  )
+
+  return(output)
+}
+
 #' Now it is time to make a generic time series generator that,
 #' given desired mean and skewness, calculates corresponding
 #' model parameters and generates time series with `dgm_` functions.
@@ -671,6 +745,55 @@ dgm_parameterizer <- function(...){
     }
   }
 
+  ## %%%%%%%%%%%%
+  ## for PoDAR(1)
+  ## %%%%%%%%%%%%
+
+  if (tolower(pa$Model) == "podar(1)" | tolower(pa$Model) == "podar") {
+
+    if (is.null(pa$k))
+      pa$k <- 50
+
+    # phi and tau are the same, then if tau is defined, it overrules phi
+    if(!is.null(pa$tau)) pa$phi <- pa$tau
+    # and if tau is not defined, then tau will get the value of phi
+    if(is.null(pa$tau)) pa$tau <- pa$phi
+    # DAR(1) intercept is zero
+    pa$c <- 0
+
+    ## Calculating model parameters
+
+    ## if mean is given
+    if (!is.null(pa$Mean)) {
+      # mean of Poisson is lambda
+      pa$lambda <- pa$Mean
+      ## we then calculate skewness based on lambda
+      pa$Skewness <- pa$lambda^(-0.5)
+      # returning the parameter list
+      return(pa)
+    }
+
+    ## if skewness is given
+    if (!is.null(pa$Skewness)) {
+      # from skewness formula: skewness = 1/sqrt(lambda)
+      pa$lambda <- pa$Skewness^(-2)
+      # we then calculate mean based on theta
+      pa$Mean <- pa$lambda
+      # returning the parameter list
+      return(pa)
+    }
+
+    ## if lambda is given
+    if (!is.null(pa$lambda)) {
+      # mean of Poisson is lambda
+      pa$Mean <- pa$lambda
+      ## we then calculate skewness based on lambda
+      pa$Skewness <- pa$lambda^(-0.5)
+      # returning the parameter list
+      return(pa)
+    }
+  }
+
 }
 
 #+ dgmGenerator
@@ -740,6 +863,16 @@ dgm_generator <- function(...){
     if(is.null(pa$k)) pa$k <- 10
     ## %% Generating the data
     o <- dgm_dar(pa = pa)
+  }
+
+  ## %%%%%%%%%%%%
+  ## PoDAR(1)
+  ## %%%%%%%%%%%%
+  if(tolower(pa$Model) == "podar(1)" | tolower(pa$Model) == "podar"){
+    # default maximum scale value
+    if(is.null(pa$k)) pa$k <- 100
+    ## %% Generating the data
+    o <- dgm_podar(pa = pa)
   }
 
   ## Also allow a data frame output
@@ -859,6 +992,13 @@ make_population <- function(Model = "DAR",
     lev2.Mean <- 2
     lev2.Variance <- 1
     chi2.df <- 2.9
+  }
+
+  if (tolower(Model) == "podar") {
+    model.name <- "PoDAR"
+    lev2.Mean <- 4
+    lev2.Variance <- 4
+    chi2.df <- 1.5
   }
 
   # sampling within-person mean from level 2 distribution

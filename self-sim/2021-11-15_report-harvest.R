@@ -5,7 +5,7 @@ library(doSNOW)
 
 # listing files to be read ------------------------------------------------
 
-harvest.dir <- "self-sim/experiment-b"
+harvest.dir <- "self-sim_dar/"
 l.files <- list.files(path = here(harvest.dir),
                       pattern = "fit_uSeed-")
 
@@ -102,4 +102,4 @@ plot(t.snow)
 # saving the extracted parameter estimates --------------------------------
 
 
-saveRDS(results, "fit-harvest_all.rds")
+saveRDS(results, "fit-harvest_all_dar.rds")

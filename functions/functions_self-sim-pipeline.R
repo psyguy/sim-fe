@@ -9,6 +9,7 @@
 library(tidyverse)
 # library(plyr)
 library(MplusAutomation)
+library(doSNOW)
 library(here)
 library(primes)
 rm(list = ls())
@@ -217,7 +218,7 @@ do_sim_parallel <-
            clusterLOG.filename = paste0("sim_clusterLOG_",
                                        Sys.Date(),
                                        ".txt"),
-           sleeptime = 1 # seconds to wait before runnig clusters
+           sleeptime = 1 # seconds to wait before running clusters
   ){
 
     cl <- snow::makeSOCKcluster(nClust,
@@ -312,6 +313,7 @@ do_fit_parallel <-
            nPROC = 1,
            save.directory = "self-sim",
            alternative.fit.Path = NULL,
+           # model_what = "resid.random",
            clusterLOG.filename = paste0("fit_clusterLOG_",
                                         Sys.Date(),
                                         ".txt"),
@@ -333,6 +335,7 @@ do_fit_parallel <-
                           #"make_population",
                           "alternative.fit.Path",
                           "nPROC",
+                          # "model_what",
                           "debug"),
                         envir = environment())
     t.snow <- snow::snow.time({
@@ -372,6 +375,7 @@ do_fit_parallel <-
                                                                    PROCESSORS = nPROC,
                                                                    BITERATIONS.min = d_i$iter,
                                                                    THIN = d_i$thin,
+                                                                   model_what = d_i$type,
                                                                    file.name = file.name)
                                )
 
@@ -407,8 +411,139 @@ do_fit_parallel <-
   }
 
 
+# Harvesting in parallel --------------------------------------------------
+
+## function to do the extraction (and error handling)
+
+fit_extract <- function(rds.file){
+
+  m <- readRDS(rds.file)
+  est.par <- m[["fit.Dataset"]][["results"]][["parameters"]]
+
+  if(length(est.par) == 0) return(NA)
+  if(is.null(est.par[["unstandardized"]])) return(NA)
+  if(is.null(est.par[["stdyx.standardized"]])) return(NA)
+
+  unstd <- est.par[["unstandardized"]] %>%
+    mutate(param.name = paste(paramHeader,
+                              param,
+                              sep = ".")
+    ) %>%
+    select(-paramHeader:-param) %>%
+    mutate(standardization = "unstd",
+           .before = est)
+  stdyx <- est.par[["stdyx.standardized"]] %>%
+    mutate(param.name = paste(paramHeader,
+                              param,
+                              sep = ".")
+    ) %>%
+    select(-paramHeader:-param) %>%
+    mutate(standardization = "stdyx",
+           .before = est)
+
+  m$fit.Dataset <- NULL
+
+  res <- unstd %>%
+    rbind(stdyx) %>%
+    mutate(fit.ElapsedTime = (m[["fit.EndTime"]] - m[["fit.StartTime"]]) %>%
+             as.numeric(),
+           fit.File = gsub(".*/", "", m$fit.File)) %>%
+    mutate(uSeed = m$uSeed,
+           type = m$type,
+           l2.dist = m$l2.dist,
+           Model = m$Model,
+           N = m$N,
+           phi = m$phi,
+           T = m$T,
+           Rep = m$Rep,
+           .before = standardization
+    )
+
+  return(res)
+
+}
+
+## Reading files (and saving harvests) in parallel
+
+do_harvest_parallel <-
+  function(fit.files,
+           nClust = 48
+           # harvest.directory = "harvests",
+           # harvest.file.name = "fit-harvest",
+         # sleeptime = 1 # seconds to wait before runnig clusters
+  ){
+
+Sys.time()
+nClust <- 48
+
+cl <- snow::makeCluster(nClust)
+snow::clusterExport(cl,
+                    c("fit.files",
+                      "fit_extract"),
+                    envir = environment())
+t.snow <- snow::snow.time({
+
+results <- snow::clusterApplyLB(cl = cl,
+                       seq_len(nrow(fit.files)),
+                       function(i) {
+
+                         # Sys.sleep(sleeptime*(i %% nClust))
+
+                         # source(here::here("functions",
+                         #                   "functions_data-generating-models.R"))
+                         library(tidyverse)
+
+                         # if (debug) {
+                         #   cat("\nRunning iteration:",
+                         #       i,
+                         #       " / ",
+                         #       nrow(d),
+                         #       "\nTime:",
+                         #       as.character(Sys.time()),
+                         #       "\n")
+                         #   print(d$sim.File)
+                         # }
+
+                         fit_extract(fit.files[i])
 
 
+                       })
 
+})
+# Stop the cluster:
+snow::stopCluster(cl)
 
+# t.fit <- system.time({
+#
+#   cl <- snow::makeCluster(nClust)
+#   doSNOW:::registerDoSNOW(cl)
+#
+#   pb <- txtProgressBar(min=1, max=length(fit.files), style=3)
+#   progress <- function(n) setTxtProgressBar(pb, n)
+#   opts <- list(progress=progress)
+#
+#   # t.snow <- snow::snow.time({
+#     results <- foreach(i = 1:length(fit.files),
+#                        .packages = "dplyr",
+#                        # .options.snow=opts,
+#                        .combine='rbind') %dopar% {
+#
+#                          res <- tryCatch({
+#                            fit_extract(fit.files[i])
+#                          }, error=function(e) NULL)
+#
+#                          return(res)
+#
+#
+#                        }
+#   # })
+#   snow::stopCluster(cl)
+# })
 
+return(results)
+# Sys.time()
+# t.fit
+# t.snow
+# plot(t.snow)
+
+}
