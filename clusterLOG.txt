@@ -1,6 +1,0 @@
-starting worker for localhost:11268 
-Error in unserialize(node$con) : error reading from connection
-Calls: local ... doTryCatch -> recvData -> recvData.SOCKnode -> unserialize
-In addition: Warning message:
-package 'snow' was built under R version 4.0.5 
-Execution halted

@@ -55,6 +55,9 @@ self-sim/fit_files - incomplete/
 
 self-sim/harvests_exp-b/
 
+simulation-files/sim-files
+simulation-files/fit-files
+
 Mplus-files_crashed/
 
 Mplus_check-chains/
