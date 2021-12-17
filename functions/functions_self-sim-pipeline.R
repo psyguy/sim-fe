@@ -150,8 +150,9 @@ make_sim_refs <-
 make_fit_refs <-
   function(sim_refs,
            hyperparameters = list(iter = c(2000),
-                                  thin = c(5)
-                                  ),
+                                  thin = c(5),
+                                  type = c("resid.random",
+                                           "resid.fixed")),
            save.directory = "self-sim",
            save.refs.filename = paste("fit_refs",
                                       Sys.Date()),
@@ -175,8 +176,15 @@ make_fit_refs <-
       )
 
 
+    only.headers <- names(hyperparameters) %>%
+      c("uSeed",
+        "N",
+        "T",
+        .,
+        "Rep")
+    only.headers <- only.headers[!(only.headers %in% c("iter", "thin"))]
+
     for (r in 1:nrow(d)) {
-      only.headers <- names(hyperparameters) %>% c("uSeed",.,"Rep")
       r.values <-d[r, only.headers]
       factor.columns <- sapply(r.values, is.factor)
       r.values[factor.columns] <-
@@ -187,9 +195,8 @@ make_fit_refs <-
         paste(collapse = "_") %>%
         paste0(".rds") %>%
         paste0(prefix.fit.datasets, .) # prefix for fitted datasets
-
+      print(r)
     }
-
 
     if(!is.null(save.refs.filename)){
       saveRDS(d,
@@ -317,7 +324,7 @@ do_fit_parallel <-
            clusterLOG.filename = paste0("fit_clusterLOG_",
                                         Sys.Date(),
                                         ".txt"),
-           sleeptime = 1 # seconds to wait before runnig clusters
+           sleeptime = 1 # seconds to wait before running clusters
   ){
 
     cl <- snow::makeSOCKcluster(nClust,
@@ -409,6 +416,104 @@ do_fit_parallel <-
     return(t.snow)
 
   }
+
+
+# Fit in parallel with future (doFuture) implementation -------------------
+
+library(future)
+library(doFuture)
+library(tidyverse)
+
+do_fit_doFuture <-
+  function(fit_refs,
+           nClust = 48,
+           nPROC = 1,
+           save.directory = "self-sim",
+           alternative.fit.Path = NULL,
+           # model_what = "resid.random",
+           clusterLOG.filename = paste0("fit_clusterLOG_",
+                                        Sys.Date(),
+                                        ".txt"),
+           sleeptime = 1 # seconds to wait before running clusters
+  ){
+
+    source(here::here("functions",
+                      "functions_Mplus.R"))
+
+
+
+    debug <- TRUE
+
+    d <- fit_refs
+
+    registerDoFuture()
+
+    plan("multisession")
+
+
+    plyr::a_ply(d,
+                # "uSeed",
+                1,
+                # base::transform,
+                function(d_i){
+
+                  # if(i<=nClust) Sys.sleep(sleeptime*i)
+
+                  d_i <- as.list(d_i)
+
+                  fit.StartTime <- Sys.time()
+
+                  df <- readRDS(file = here::here(d_i$sim.Path,
+                                                  d_i$sim.File))$sim.Dataset %>%
+                    filter(subject <=d_i$N,
+                           t <= d_i$T)
+                  file.name <- gsub(".rds", "", d_i$fit.File)
+
+                  print(paste(file.name,
+                              "started at",
+                              fit.StartTime)
+                        )
+
+                  tryRes <-
+                    try(
+                      output.fit <- run_MplusAutomation(df = df,
+                                                        PROCESSORS = nPROC,
+                                                        BITERATIONS.min = d_i$iter,
+                                                        THIN = d_i$thin,
+                                                        model_what = d_i$type,
+                                                        file.name = file.name)
+                    )
+
+                  d_i$fit.Dataset <- tryRes # output.fit
+                  d_i$fit.StartTime <- fit.StartTime
+                  d_i$fit.EndTime <- Sys.time()
+                  d_i$fit.ElapsedTime <- d_i$fit.EndTime - d_i$fit.StartTime
+
+                  fit.Path <- ifelse(is.null(alternative.fit.Path),
+                                     d_i$fit.Path,
+                                     alternative.fit.Path)
+
+                  saveRDS(d_i,
+                          file = here::here(fit.Path,
+                                            d_i$fit.File))
+
+                  # return(paste("Running iteration:",
+                  #              i,
+                  #              " / ",
+                  #              nrow(d),
+                  #              "Time:",
+                  #              as.character(Sys.time())))
+
+                  print(paste(file.name,
+                              "finished at",
+                              d_i$fit.EndTime)
+                  )                  # return(d_i)
+                           },
+                .parallel = TRUE)
+
+
+  }
+
 
 
 # Harvesting in parallel --------------------------------------------------
