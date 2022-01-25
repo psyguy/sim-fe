@@ -91,16 +91,15 @@ fit_refs <- readRDS(here::here("simulation-files/refs",
                    "fit-refs_Model-BinAR.ChiAR.PoDAR.NAR_N-25.50.100_T-25.50.100_iter-2000_thin-5_type-resid.fixed.random.rds")
 )
 
-fit_refs_NAR <- fit_refs %>%
-  filter(Model == "NAR")
+fit_refs_all <- fit_refs
 
 fit.Files_done <- list.files(here::here("simulation-files/fit-files"),
                             pattern = "fit_uSeed-")
 
-fit_refs_remaining <- fit_refs_NAR %>%
+fit_refs_remaining <- fit_refs_all %>%
   filter(!(fit.File %in% fit.Files_done)) %>%
-  # filter(T != 100, N != 100)
-  filter(T == 100, N == 100)
+  filter(T != 100, N != 100) # older DGMs have different fit names
+  # filter(T == 100, N == 100)
 
 
 Sys.time()
@@ -113,34 +112,45 @@ system.time(
   )
 )
 Sys.time()
-print("fit of remaining T == 100, N == 100 of NAR completed")
+print("fit of remaining T != 100, N != 100 of everything (1770 replications) completed, which had started at 2022-01-02 10:28:16")
 
 # Putting together the index and harvest files --------------------------------------
 
-harvest.dir <- "simulation-files/fit-files/podar-fits"
+harvest.dir <- "simulation-files/fit-files"
 l.files <- list.files(path = here(harvest.dir),
-                      pattern = ".rds")
+                      pattern = glob2rx("*_N-25_T-25*.rds"))
 
 
 fit.files <- l.files %>%
   here(harvest.dir, .) %>%
   file.info() %>%
-  filter(size > 512000) %>%
+  filter(size > 9000) %>%
   rownames()
 
 # harv <- do_harvest_parallel(fit.files)
 
 
-plan("multisession")
+plan("sequential")
+
+harv <- h %>% filter(uSeed == 0)
 
 system.time(
-harv <- plyr::ldply(fit.files,
-                    fit_extract,
-                    .parallel = TRUE)
+for(f in 1:length(fit.files)){
+  if(!(f %% 100)) print(f)
+  f.h <- fit_extract(fit.files[f])
+  if(!is.data.frame(f.h)) next
+  harv <- rbind(harv, f.h)
+}
 )
 
+# system.time(
+# harv <- plyr::ldply(fit.files,
+#                     fit_extract,
+#                     .parallel = FALSE)
+# )
+
 saveRDS(harv,
-        "fit-harvest_N-100_T-100_PoDAR_resid-fixed.random.rds")
+        "fit-harvest_N-25_T-25_BinAR.ChiAR.PoDAR.NAR_resid-fixed.random.rds")
 
 
 

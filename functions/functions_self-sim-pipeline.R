@@ -525,9 +525,16 @@ fit_extract <- function(rds.file){
   m <- readRDS(rds.file)
   est.par <- m[["fit.Dataset"]][["results"]][["parameters"]]
 
-  if(length(est.par) == 0) return(NA)
-  if(is.null(est.par[["unstandardized"]])) return(NA)
-  if(is.null(est.par[["stdyx.standardized"]])) return(NA)
+  # make empty dataframe for NAs
+  empty <- data.frame(matrix(ncol = 19, nrow = 0))
+  colnames(empty) <- c("uSeed", "type", "l2.dist", "Model", "N", "phi", "T",
+                       "Rep", "standardization", "est", "posterior_sd", "pval",
+                       "lower_2.5ci", "upper_2.5ci", "sig", "BetweenWithin",
+                       "param.name", "fit.ElapsedTime", "fit.File")
+
+  if(length(est.par) == 0) return(empty)
+  if(is.null(est.par[["unstandardized"]])) return(empty)
+  if(is.null(est.par[["stdyx.standardized"]])) return(empty)
 
   unstd <- est.par[["unstandardized"]] %>%
     mutate(param.name = paste(paramHeader,
@@ -652,3 +659,27 @@ return(results)
 # plot(t.snow)
 
 }
+
+do_harvest_doFuture <-
+  function(fit.files,
+           nClust = 48
+           # harvest.directory = "harvests",
+           # harvest.file.name = "fit-harvest",
+           # sleeptime = 1 # seconds to wait before runnig clusters
+  ){
+
+
+    registerDoFuture()
+
+    plan("multisession")
+
+
+    results <- plyr::ldply(fit.files,
+                           # "uSeed",
+                           # 1,
+                           # base::transform,
+                           fit_extract,
+                           .parallel = TRUE)
+
+    return(results)
+  }
