@@ -49,6 +49,89 @@ library(moments)
 #' We define functions to implement DGMs with original parameterization
 #'
 
+#+ NAR
+dgm_nar <- function(...){
+
+  pa <- list(...)
+
+  if(is.list(pa$pa)) pa <- pa$pa
+
+  ## setting default seed if not given
+  if(is.null(pa$phi)) pa$phi <- 0.4
+  if(is.null(pa$Mean)) pa$Mean <- 50
+  if(is.null(pa$var.marginal)) pa$var.marginal <- 4
+  if(is.null(pa$var.resid)) pa$var.resid <- pa$var.marginal * (1 - pa$phi ^ 2)
+  if(is.null(pa$k)) pa$k <- 100
+  if(is.null(pa$T)) pa$T <- 100
+  if(is.null(pa$seed)) pa$seed <- 0
+
+  ### first make time series centered around zero
+  ## drawing the first sample x_cent_1
+  set.seed(pa$seed)
+  x_cent <- rep(NA, pa$T)
+  x_cent[1] <- rnorm(n = 1,
+                     mean = 0,
+                     sd = sqrt(pa$var.marginal)
+                     )
+
+  ## making the rest of the centered time series
+  for (t in 2:pa$T){
+
+    x_cent[t] <- pa$phi*x_cent[t-1] + rnorm(n = 1,
+                                            mean = 0,
+                                            sd = sqrt(pa$var.resid)
+                                            )
+  }
+  ## adding the mean to the centered time series
+  x <- x_cent + pa$Mean
+
+  ## quick output of raw time series without book-keeping variables/parameters
+  if(!is.null(pa$only.ts))
+    if(pa$only.ts==TRUE) return(x)
+
+  Empirical.Parameters = list(Mean = mean(x),
+                              Variance = var(x),
+                              Skewness = moments::skewness(x),
+                              AR = acf(x, lag.max = 1, plot = FALSE)$acf[2]
+  )
+
+  ## making a LaTeX-ready list description of the model
+  Model.Description <- paste0("$NAR(1):", # \\; with",
+                              "\\; \\mu = ",
+                              round(pa$Mean,2),
+                              "(",
+                              round(Empirical.Parameters$Mean,2),
+                              ")",
+                              ",\\; \\gamma = ",
+                              0,
+                              "(",
+                              round(Empirical.Parameters$Skewness,2),
+                              ")",
+                              ",\\; \\phi = ",
+                              round(pa$phi,2),
+                              "(",
+                              round(Empirical.Parameters$AR,2),
+                              ")",
+                              ",\\; \\sigma^2_{marginal} = ",
+                              round(pa$var.marginal,2),
+                              "(",
+                              round(Empirical.Parameters$Variance,2),
+                              ")",
+                              ",\\; T = ",
+                              pa$T,
+                              "$")
+
+  ## making the output object
+  output <- list(x = x,
+                 Model.Description = Model.Description,
+                 Model.Parameters = pa,
+                 Empirical.Parameters = Empirical.Parameters)
+
+  return(output)
+}
+
+
+
 #+ chiAR
 dgm_chiar <- function(...){
 
@@ -66,11 +149,11 @@ dgm_chiar <- function(...){
 
   ## drawing the first sample x_1
   set.seed(pa$seed)
-  x = rep(NA, pa$T)
+  x <- rep(NA, pa$T)
   x[1] <- rchisq(n = 1,
                  df = pa$Mean)
 
-  ## making the rest of th time series
+  ## making the rest of the time series
   for (t in 2:pa$T){
 
     x[t] <- pa$c + pa$phi*x[t-1] + rchisq(n = 1,
@@ -78,7 +161,8 @@ dgm_chiar <- function(...){
   }
 
   ## quick output of raw time series without book-keeping variables/parameters
-  if(!is.null(pa$only.ts) & pa$only.ts==TRUE) return(x)
+  if(!is.null(pa$only.ts))
+    if(pa$only.ts==TRUE) return(x)
 
   Empirical.Parameters = list(Mean = mean(x),
                               Variance = var(x),
@@ -189,7 +273,7 @@ dgm_zeroinflated <- function(...){
 
   ## drawing the first sample x_1
   set.seed(pa$seed)
-  x = rep(NA, pa$T)
+  x <- rep(NA, pa$T)
   x[1] <- ifelse(states[1] == "off",
                  0,
                  rnorm(1,
@@ -197,7 +281,7 @@ dgm_zeroinflated <- function(...){
                        sqrt(pa$var.on / (1 - pa$phi ^ 2))
                  )
   )
-  ## making the rest of th time series
+  ## making the rest of the time series
   for (t in 2:pa$T){
 
     x[t] <- ifelse(states[t]=="off",
@@ -210,7 +294,8 @@ dgm_zeroinflated <- function(...){
   }
 
   ## quick output of raw time series without book-keeping variables/parameters
-  if(!is.null(pa$only.ts) & pa$only.ts==TRUE) return(x)
+  if(!is.null(pa$only.ts))
+    if(pa$only.ts==TRUE) return(x)
 
   Empirical.Parameters = list(Mean = mean(x),
                               Variance = var(x),
@@ -273,12 +358,12 @@ dgm_binar <- function(...){
 
   ## drawing the first sample x_1
   set.seed(pa$seed)
-  x = rep(NA, pa$T)
+  x <- rep(NA, pa$T)
   x[1] <- rbinom(n = 1,
                  size = pa$k ,
                  prob = pa$theta)
 
-  ## making the rest of th time series
+  ## making the rest of the time series
   for (t in 2:pa$T){
     S_t <- rbinom(n = 1,
                   size = x[t-1],
@@ -290,7 +375,8 @@ dgm_binar <- function(...){
   }
 
   ## quick output of raw time series without book-keeping variables/parameters
-  if(!is.null(pa$only.ts) & pa$only.ts==TRUE) return(x)
+  if(!is.null(pa$only.ts))
+    if(pa$only.ts==TRUE) return(x)
 
   Empirical.Parameters = list(Mean = mean(x),
                               Variance = var(x),
@@ -352,12 +438,12 @@ dgm_dar <- function(...){
 
   ## drawing the first sample x_1
   set.seed(pa$seed)
-  x = rep(NA, pa$T)
+  x <- rep(NA, pa$T)
   x[1] <- rbinom(n = 1,
                  size = pa$k ,
                  prob = pa$theta)
 
-  ## making the rest of th time series
+  ## making the rest of the time series
   for (t in 2:pa$T){
     V_t <- rbinom(n = 1,
                   size = 1,
@@ -369,7 +455,8 @@ dgm_dar <- function(...){
   }
 
   ## quick output of raw time series without book-keeping variables/parameters
-  if(!is.null(pa$only.ts) & pa$only.ts==TRUE) return(x)
+  if(!is.null(pa$only.ts))
+    if(pa$only.ts==TRUE) return(x)
 
   Empirical.Parameters = list(Mean = mean(x),
                               Variance = var(x),
@@ -428,11 +515,11 @@ dgm_podar <- function(...){
 
   ## drawing the first sample x_1
   set.seed(pa$seed)
-  x = rep(NA, pa$T)
+  x <- rep(NA, pa$T)
   x[1] <- rpois(n = 1,
                 lambda = pa$lambda)
 
-  ## making the rest of th time series
+  ## making the rest of the time series
   for (t in 2:pa$T){
     V_t <- rbinom(n = 1,
                   size = 1,
@@ -443,7 +530,8 @@ dgm_podar <- function(...){
   }
 
   ## quick output of raw time series without book-keeping variables/parameters
-  if(!is.null(pa$only.ts) & pa$only.ts==TRUE) return(x)
+  if(!is.null(pa$only.ts))
+    if(pa$only.ts==TRUE) return(x)
 
   Empirical.Parameters = list(Mean = mean(x),
                               Variance = var(x),
@@ -503,6 +591,47 @@ dgm_parameterizer <- function(...){
 
   if(is.null(pa$Model)) pa$Model <- "ChiAR(1)"
   if(is.null(pa$phi)) pa$phi <- 0.2
+
+  ## %%%%%%%%%%%%
+  ## for NAR(1)
+  ## %%%%%%%%%%%%
+
+  if(tolower(pa$Model) == "nar(1)" | tolower(pa$Model) == "nar"){
+
+    if(is.null(pa$k)) pa$k <- 100
+
+    ## Calculating model parameters
+    ## if mean is given
+    if (!is.null(pa$Mean)) {
+      # then from the mean formula
+      pa$c <- pa$Mean * (1 - pa$phi)
+    }
+    ## if mean is not given, we get it from the intercept
+    else{
+      # set intercept to zero, if already not defined
+      if(is.null(pa$c)) pa$c <- 0
+      # then from the mean formula
+      pa$Mean <- pa$c / (1 - pa$phi)
+    }
+
+    ## if within-person (marginal) variance is given
+    if (!is.null(pa$Mean) & !is.null(pa$var.marginal)) {
+      # from the marginal variance formula
+      pa$var.resid <- pa$var.marginal * (1 - pa$phi ^ 2)
+    }
+    ## if the marginal variance is not given, we get it from residual variance
+    else{
+      # set residual variance to one, if already not defined
+      if(is.null(pa$var.resid)) pa$var.resid <- 1
+      # from the marginal variance formula
+      pa$var.marginal <- pa$var.resid / (1 - pa$phi ^ 2)
+    }
+
+    ## returning the parameter list
+    return(pa)
+
+  }
+
 
   ## %%%%%%%%%%%%
   ## for ChiAR(1)
@@ -835,6 +964,17 @@ dgm_generator <- function(...){
   ### making models
 
   ## %%%%%%%%%%%%
+  ## NAR(1)
+  ## %%%%%%%%%%%%
+  if(tolower(pa$Model) == "nar(1)" | tolower(pa$Model) == "nar"){
+    # default maximum scale value
+    if(is.null(pa$k)) pa$k <- 100
+    pa$var.marginal <- 4
+    ## %% Generating the data
+    o <- dgm_nar(pa = pa)
+  }
+
+  ## %%%%%%%%%%%%
   ## ChiAR(1)
   ## %%%%%%%%%%%%
   if(tolower(pa$Model) == "chiar(1)" | tolower(pa$Model) == "chiar" |
@@ -999,6 +1139,13 @@ make_population <- function(Model = "DAR",
     lev2.Mean <- 4
     lev2.Variance <- 4
     chi2.df <- 1.5
+  }
+
+  if (tolower(Model) == "nar") {
+    model.name <- "NAR"
+    lev2.Mean <- 50
+    lev2.Variance <- 4
+    chi2.df <- 2
   }
 
   # sampling within-person mean from level 2 distribution

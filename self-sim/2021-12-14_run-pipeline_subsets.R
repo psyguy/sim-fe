@@ -1,6 +1,7 @@
 # rm(list = ls())
 source(here::here("functions",
                   "functions_self-sim-pipeline.R"))
+library(here)
 
 #' We already have the following:
 #'  1. simulation reference table `sim_refs`
