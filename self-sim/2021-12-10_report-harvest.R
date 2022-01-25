@@ -21,17 +21,20 @@ library(hrbrthemes)
 #               harv_resid.random,
 #               harv_podar)
 #
-# harv <- harv %>%
-#   na.omit() %>%
-#   mutate(analysis.time = if_else(fit.ElapsedTime<5,
-#                                  fit.ElapsedTime*60,
-#                                  fit.ElapsedTime),
-#          .after = fit.ElapsedTime
-#   )
+harv <- harv %>%
+  na.omit() %>%
+  mutate(analysis.time = if_else(fit.ElapsedTime<5,
+                                 fit.ElapsedTime*60,
+                                 fit.ElapsedTime),
+         .after = fit.ElapsedTime
+  )
 
 harv <- readRDS(here::here("harvests",
                            "fit-harvest_N-100_T-100_BinAR.ChiAR.DAR.PoDAR_resid-fixed.random.rds")
-                )
+)
+harv <- readRDS(here::here("harvests",
+                           "fit-harvest_N-25_T-25_BinAR.ChiAR.PoDAR.NAR_resid-fixed.random.rds")
+)
 
 my.standardization = "stdyx"
 # my.standardization = "unstd"
@@ -259,7 +262,7 @@ d <- summary_all %>%
                               levels = c("Negative", "Zero", "Positive"),
   ),
   Model = factor(Model,
-                 levels = c("Chi2AR", "BinAR", "DAR", "PoDAR")
+                 levels = c("NAR","Chi2AR", "BinAR", "PoDAR")
   )
   )
 
