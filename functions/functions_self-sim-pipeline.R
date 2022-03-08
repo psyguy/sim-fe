@@ -557,7 +557,10 @@ fit_extract <- function(rds.file){
 
   res <- unstd %>%
     rbind(stdyx) %>%
-    mutate(fit.ElapsedTime = (m[["fit.EndTime"]] - m[["fit.StartTime"]]) %>%
+    mutate(fit.ElapsedTime = (difftime(m[["fit.EndTime"]],
+                                       m[["fit.StartTime"]],
+                                       units="mins")
+                              ) %>%
              as.numeric(),
            fit.File = gsub(".*/", "", m$fit.File)) %>%
     mutate(uSeed = m$uSeed,
@@ -576,6 +579,24 @@ fit_extract <- function(rds.file){
 }
 
 ## Reading files (and saving harvests) in parallel
+
+## The following function is preferred (great error handling)
+
+library(doFuture)
+
+do_harvest_doFuture <- function(fit.files){
+
+  registerDoFuture()
+
+  plan("multisession")
+
+  results <- foreach(f = 1:length(fit.files),
+                     .combine = rbind,
+                     .errorhandling = 'remove') %dopar% {
+                       fit_extract(fit.files[f])
+                     }
+  return(results)
+}
 
 do_harvest_parallel <-
   function(fit.files,
@@ -660,26 +681,3 @@ return(results)
 
 }
 
-do_harvest_doFuture <-
-  function(fit.files,
-           nClust = 48
-           # harvest.directory = "harvests",
-           # harvest.file.name = "fit-harvest",
-           # sleeptime = 1 # seconds to wait before runnig clusters
-  ){
-
-
-    registerDoFuture()
-
-    plan("multisession")
-
-
-    results <- plyr::ldply(fit.files,
-                           # "uSeed",
-                           # 1,
-                           # base::transform,
-                           fit_extract,
-                           .parallel = TRUE)
-
-    return(results)
-  }

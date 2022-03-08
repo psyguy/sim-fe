@@ -93,14 +93,21 @@ fit_refs <- readRDS(here::here("simulation-files/refs",
 
 fit_refs_all <- fit_refs
 
-fit.Files_done <- list.files(here::here("simulation-files/fit-files"),
-                            pattern = "fit_uSeed-")
+fit.Files_done_74k <- list.files(here::here("simulation-files/fit-files-74k"),
+                             pattern = "fit_uSeed-")
 
-fit_refs_remaining <- fit_refs_all %>%
+fit.Files_done_last64k <- list.files(here::here("simulation-files/fit-files"),
+                             pattern = "fit_uSeed-")
+
+fit.Files_done <- c(fit.Files_done_last64k,
+                    fit.Files_done_74k)
+
+fit_refs_remaining <- fit_refs %>%
   filter(!(fit.File %in% fit.Files_done)) %>%
-  filter(T != 100, N != 100) # older DGMs have different fit names
+  filter(T*N != 10000) # older DGMs (with N=100, T=100) have different fit names
   # filter(T == 100, N == 100)
 
+fit_refs_remaining %>% select(2:6) %>% table()
 
 Sys.time()
 system.time(
@@ -112,46 +119,31 @@ system.time(
   )
 )
 Sys.time()
-print("fit of remaining T != 100, N != 100 of everything (1770 replications) completed, which had started at 2022-01-02 10:28:16")
+print("fit of remaining conditions (10,916 replications) completed, which had started at 2022-03-01 15:34:18")
 
 # Putting together the index and harvest files --------------------------------------
 
 harvest.dir <- "simulation-files/fit-files"
+# l.files <- list.files(path = here(harvest.dir),
+#                       pattern = glob2rx("*_N-25_T-25*.rds"))
 l.files <- list.files(path = here(harvest.dir),
-                      pattern = glob2rx("*_N-25_T-25*.rds"))
+                      pattern = glob2rx("*.rds"))
 
 
 fit.files <- l.files %>%
-  here(harvest.dir, .) %>%
-  file.info() %>%
-  filter(size > 9000) %>%
-  rownames()
-
-# harv <- do_harvest_parallel(fit.files)
+  here(harvest.dir, .)
 
 
-plan("sequential")
+# registerDoFuture()
+#
+# plan("multisession")
 
-harv <- h %>% filter(uSeed == 0)
-
+Sys.time()
 system.time(
-for(f in 1:length(fit.files)){
-  if(!(f %% 100)) print(f)
-  f.h <- fit_extract(fit.files[f])
-  if(!is.data.frame(f.h)) next
-  harv <- rbind(harv, f.h)
-}
+  harv <- do_harvest_doFuture(fit.files)
 )
+Sys.time()
 
-# system.time(
-# harv <- plyr::ldply(fit.files,
-#                     fit_extract,
-#                     .parallel = FALSE)
-# )
 
 saveRDS(harv,
-        "fit-harvest_N-25_T-25_BinAR.ChiAR.PoDAR.NAR_resid-fixed.random.rds")
-
-
-
-# save t.fit_540-reps_nClust-48_nPROC-2, 1500x1500
+        "fit-harvest_64k.rds")
