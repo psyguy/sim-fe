@@ -12,6 +12,7 @@ library(cowplot)
 library(patchwork)
 # shelf(tikzDevice)
 library(latex2exp)
+# library(tictoc)
 
 rm(list = ls())
 
@@ -174,20 +175,48 @@ report_harvest <- function(harv = harv,
                cols = vars(Model))
 
 
-  plot_histogram <- d %>%
+  plot_histogram <-
+    d %>%
+      filter(Model == "PoDAR",
+             l2.dist == "Gaussian") %>%
+      # group_by(N, T) %>%
+      # arrange() %>%
+      mutate(title = paste0("N: ", N,
+                            ", T: ", T) %>%
+               factor(levels = c("N: 100, T: 25",
+                                 "N: 100, T: 50",
+                                 "N: 100, T: 100",
+                                 "N: 50, T: 25",
+                                 "N: 50, T: 50",
+                                 "N: 50, T: 100",
+                                 "N: 25, T: 25",
+                                 "N: 25, T: 50",
+                                 "N: 25, T: 100"
+
+               ))) %>%
     ggplot() +
     aes(fill = sign.X.sig,
         group = sign.X.sig) +
+      # geom_rect(aes(xmin = min(0, mean.est),
+      #               xmax = max(0, mean.est),
+      #               ymin = -Inf, ymax = Inf),
+      #           fill = "gray80") +
     geom_histogram(aes(x = est),
-                   bins = 30) +
-    theme_minimal() +
-    geom_vline(aes(xintercept = mean.est),
-               linetype = "dashed") +
-    theme_calc() +
-    scale_fill_viridis_d(begin = 0.4,
-                         end = 1) +
-    facet_grid(rows = vars(l2.dist),
-               cols = vars(Model))
+                   bins = 40) +
+    # theme_light() +
+      theme_minimal() +
+      geom_vline(aes(xintercept = 0),
+                 linetype = "dashed") +
+      # geom_vline(aes(xintercept = Bias),
+      #            linetype = "dashed") +
+    # theme_calc() +
+    scale_fill_viridis_d(#option = "plasma",
+                         begin = 0,
+                         end = 1
+                         ) +
+      facet_wrap(vars(title))
+    # facet_grid(rows = vars(N),
+    #            cols = vars(T))
 
   plot_histogram.time <- d %>%
     ggplot() +
@@ -215,8 +244,7 @@ report_harvest <- function(harv = harv,
 
 make.summary_all <- function(harv = harv,
                              my.standardization = "stdyx",
-                             my.param.name = "X.WITH.PHI"
-){
+                             my.param.name = "X.WITH.PHI"){
 
   summary_resid.fixed <- report_harvest(harv = harv %>%
                                           filter(type == "resid.fixed"),
@@ -252,7 +280,7 @@ make.summary_all <- function(harv = harv,
 
 }
 
-d <- make.summary_all(harv)
+# d <- make.summary_all(harv)
 
 
 #  summary plots ----------------------------------------------------------
@@ -270,10 +298,19 @@ plot_Model.x.Resid <- function(harv,
                         standardization,
                         param.name)
 
+  if(!is.null(which.percent) | which.measure == "Type-1 Error"){
+    dd <- d %>%
+      # filter(Correlation == which.percent) %>%
+      select(type:T, contains(which.percent)) %>%
+      na.omit()
+    dd[ncol(dd)] <- (100 - dd[ncol(dd)])#/100
+    which.measure <- "% Type-1 Error"}
+
   if(is.null(which.percent)){
     dd <- d %>%
       # filter(Correlation == which.percent) %>%
       select(type:T, which.measure)}
+
   colnames(dd)[ncol(dd)] <- "value"
   y.range <- dd$value %>% range()
 
@@ -294,7 +331,7 @@ plot_Model.x.Resid <- function(harv,
   ddd <- dd %>%
     distinct()
 
-  ddd %>%
+  output.plot <- ddd %>%
     ggplot()+
     aes(x = T, y = value,
         group = N,
@@ -318,8 +355,30 @@ plot_Model.x.Resid <- function(harv,
           text = element_text(size = 30,
                               family = "Merriweather Regular")
           )
+  if(!is.null(which.percent) | which.measure == "Type-1 Error"){
+    output.plot <- output.plot +
+      scale_y_continuous(breaks = c(1, 5, 10, 20, 40, 60, 80, 90, 100),
+        limits = y.range)
+  }
+
+  return(output.plot)
 
 }
+
+# modified_log10_trans <- scales::trans_new(
+#   "modified_log10_trans",
+#   transform = function(x) {
+#     if(x>0) o <- log10(x)
+#     if(x<0) o <- -log10(-x)},
+#   inverse = function(x) {sinh(x)}
+# )
+
+asinh_trans <- scales::trans_new(
+  "inverse_hyperbolic_sine",
+  transform = function(x) {asinh(x)},
+  inverse = function(x) {sinh(x)}
+)
+
 
 # which.percent <- "Zero"
 
@@ -353,10 +412,12 @@ my.param.name <- "PHI|X.ON.X&1"
 title <- "Within standardized $\\phi$ averaged over cluster"
 
 
-harv %>% filter(param.name == my.param.name,
-                    standardization == my.standardization) %>%
-  pull(BetweenWithin) %>%
-  unique()
+
+
+# harv %>% filter(param.name == my.param.name,
+#                     standardization == my.standardization) %>%
+#   pull(BetweenWithin) %>%
+#   unique()
 
 p.upper.left <- plot_Model.x.Resid(harv,
                                    "Gaussian",
@@ -371,19 +432,73 @@ p.upper.right <- plot_Model.x.Resid(harv,
 
 p.lower.left <- plot_Model.x.Resid(harv,
                                    "Gaussian",
-                                   "MAD",
+                                   "variance",
                                    my.standardization,
                                    my.param.name)  + ggtitle(NULL)
 p.lower.right <- plot_Model.x.Resid(harv,
                                     "Chi2",
-                                    "MAD",
+                                    "variance",
                                     my.standardization,
                                     my.param.name)  + ggtitle(NULL) + ylab(NULL)
 
 
 p.patchwork <- (p.upper.left | p.upper.right) / (p.lower.left | p.lower.right)
 
-p.final <- p.patchwork +
+
+# For percentages:
+
+my.standardization <- "stdyx"
+my.param.name <- "X.WITH.PHI"
+title <- "Error in the correlation and covariance between $\\phi$ and mean"
+
+
+p.upper.left <- plot_Model.x.Resid(harv,
+                                   "Gaussian",
+                                   "Type-1 Error",
+                                   "stdyx",
+                                   my.param.name,
+                                   which.percent = "Zero")  + xlab(NULL)
+p.upper.right <- plot_Model.x.Resid(harv,
+                                    "Chi2",
+                                    "Type-1 Error",
+                                    "stdyx",
+                                    my.param.name,
+                                    which.percent = "Zero") + xlab(NULL) + ylab(NULL)
+
+p.lower.left <- plot_Model.x.Resid(harv,
+                                   "Gaussian",
+                                   "Type-1 Error",
+                                   "unstd",
+                                   my.param.name,
+                                   which.percent = "Zero")  + ggtitle(NULL)
+p.lower.right <- plot_Model.x.Resid(harv,
+                                    "Chi2",
+                                    "Type-1 Error",
+                                    "unstd",
+                                    my.param.name,
+                                    which.percent = "Zero")  + ggtitle(NULL) + ylab(NULL)
+
+
+p.patchwork <- (p.upper.left | p.upper.right) / (p.lower.left | p.lower.right)
+
+#
+# p.percent.left <- plot_Model.x.Resid(harv,
+#                                    "Gaussian",
+#                                    "Type-1 Error",
+#                                    my.standardization,
+#                                    my.param.name,
+#                                    which.percent = "Zero")  + xlab(NULL)
+# p.percent.right <- plot_Model.x.Resid(harv,
+#                                     "Chi2",
+#                                     "Type-1 Error",
+#                                     my.standardization,
+#                                     my.param.name,
+#                                     which.percent = "Zero") + xlab(NULL) + ylab(NULL)
+#
+# p.patchwork.percent <- (p.percent.left | p.percent.right)
+
+
+p.final <- p.patchwork + #.percent +
   plot_layout(guides = "collect") +
    # +
   plot_annotation(title = TeX(title),
@@ -395,11 +510,18 @@ p.final <- p.patchwork +
                   ) &
   geom_point(size = 3.5, alpha = 1) &
   geom_line(size = 0.5, alpha = 0.6) &
+  # geom_hline(yintercept = c(1, 5), linetype = "dashed") &
   scale_color_viridis_d(direction = -1) &
+  # scale_y_continuous(trans = asinh_trans) &
+  # coord_trans(y = "log10") &
   theme(legend.position = "bottom")
 
+# (p.percent.four.panel <-( p.final / p.final.cov) +
+#   plot_layout(guides = "collect") &
+#   theme(legend.position = "bottom")
+# )
 
-ggsave(paste0("bias + MAD ",
+ggsave(paste0("bias + variance ",
               gsub("\\|", " ", my.param.name),
               " (",
               my.standardization,
@@ -409,60 +531,217 @@ ggsave(paste0("bias + MAD ",
        height = 30,
        units = "in")
 
-
-p.four.panels <- plot_grid(p.upper.left,
-                           p.upper.right,
-                           p.lower.left,
-                           p.lower.right,
-                           ncol = 2)
-
+# ggsave(paste0("Error correlation and covariance", ".pdf"),
+#        p.final,
+#        width = 21,
+#        height = 30,
+#        units = "in")
 
 
-plot.name <- paste0(my.param.name,
-                    " (",
-                    my.standardization,
-                    ")"
-                   )
+# Plotting nested histograms  ---------------------------------------------
 
-title <- ggdraw() +
-  draw_label(
-    plot.name,
-    size = 40,
-    fontfamily = "Merriweather Light",
-    # fontface = 'bold',
-    x = 0,
-    hjust = 0
-  ) +
-  theme(
-    # add margin on the left of the drawing canvas,
-    # so title is aligned with left edge of first plot
-    plot.margin = margin(0, 0, 0, 7)
-  )
-
-plot.all <- plot_grid(title,
-                      p.four.panels,
-                      legend_b,
-                      ncol = 1,
-                      rel_heights = c(0.1,
-                                      3, 0.05))
-
-save_plot(paste0(plot.name, ".png"),
-          plot.all,
-          base_height = 18,
-          base_width = 11.13)
-
-save_plot("km.png", p.row,
-          ncol = 2,
-          base_asp = 1.1)
+prep.harvest <- function(harv,
+                         # Means.dist = "Gaussian", #c("Gaussian", "Chi2"),
+                         # Model = "BinAR",
+                         # resid.type = "resid.fixed",
+                         my.standardization = "stdyx",
+                         my.param.name = "X.WITH.PHI"){
 
 
-# return(output)
-# }
+  d <- harv %>%
+    na.omit() %>%
+    filter(
+      # type == resid.type,
+      standardization == my.standardization,
+      param.name == my.param.name
+    ) %>%
+    mutate(l2.X.Model = as.factor(paste(l2.dist, Model))) %>%
+    group_by(type,
+             l2.X.Model,
+             N,
+             T) %>%
+    arrange(est) %>%
+    mutate(ord = order(est)) %>%
+    mutate(sign.X.sig = as.factor(sign(est)*sig)) %>%
+    mutate(mean.est = mean(est),
+           n.datasets = n(),
+           nonconverged.percent = round(100*(1000-n())/1000,2)) %>%
+    group_by(sign.X.sig,
+             .add = TRUE) %>%
+    mutate(percent = round(100*n()/n.datasets,1),
+           .after = sign.X.sig) %>%
+    mutate(title = paste0("N: ", N,
+                          ", T: ", T) %>%
+             factor(levels = c("N: 100, T: 25",
+                               "N: 100, T: 50",
+                               "N: 100, T: 100",
+                               "N: 50, T: 25",
+                               "N: 50, T: 50",
+                               "N: 50, T: 100",
+                               "N: 25, T: 25",
+                               "N: 25, T: 50",
+                               "N: 25, T: 100"
+             )
+             )
+    )
+
+  levels(d$sign.X.sig) <- c("Negative", "Zero", "Positive")
+
+  return(d)
+}
+
+d <- prep.harvest(harv)
+
+p.hist <- function(d){
 
 
-file4 <- tempfile("file4", fileext = ".png")
+  x.range <- d$est %>% range()
+
+  plot_histogram <-
+    d %>%
+    filter() %>%
+    # group_by(N, T) %>%
+    # arrange() %>%
+
+    ggplot() +
+    aes(fill = sign.X.sig,
+        group = sign.X.sig) +
+    # geom_rect(aes(xmin = min(0, mean.est),
+    #               xmax = max(0, mean.est),
+    #               ymin = -Inf, ymax = Inf),
+    #           fill = "gray80") +
+    geom_histogram(aes(x = est),
+                   bins = 40) +
+    theme_calc() +
+    # theme_light() +
+    # theme_minimal() +
+    geom_vline(aes(xintercept = 0),
+               linetype = "dashed") +
+    # geom_vline(aes(xintercept = Bias),
+    #            linetype = "dashed") +
+    # theme_calc() +
+    scale_fill_viridis_d(option = "viridis",
+                         begin = 0.2,
+                         end = 0.8
+    ) +
+    scale_x_continuous(limits = x.range) +
+    facet_wrap(vars(title))
+
+  return(plot_histogram)
+
+}
+
+my.standardization = "stdyx"
+my.param.name = "X.WITH.PHI"
+
+
+plot_columns <- function(d,
+                         Means.dist = "Gaussian", #c("Gaussian", "Chi2"),
+                         resid.type = "resid.fixed"){
+
+  dd <- d %>%
+    filter(l2.dist == Means.dist,
+           type == resid.type)
+
+  p.NAR <- dd %>%
+    filter(Model == "NAR") %>%
+    p.hist()
+
+  p.Chi2AR <- dd %>%
+    filter(Model == "Chi2AR") %>%
+    p.hist()
+
+  p.BinAR <- dd %>%
+    filter(Model == "BinAR") %>%
+    p.hist()
+
+  p.PoDAR <- dd %>%
+    filter(Model == "PoDAR") %>%
+    p.hist()
+
+
+  patched <- p.NAR / p.Chi2AR / p.BinAR / p.PoDAR
+
+  means <- paste0(Means.dist, "-distributed means")
+
+  resids <- ifelse(resid.type == "resid.fixed",
+                   "Fixed Residuals",
+                   "Random Residuals")
+
+  patched.titled <- patched +
+    plot_layout(guides = "collect") +
+    plot_annotation(title = paste(means, "with", resids),
+                    subtitle = " ",
+                    theme = theme(plot.title =
+                                    element_text(size = 25,
+                                    family = "Merriweather Regular",
+                                    hjust = 0.5))) &
+    theme(legend.position = "bottom") &
+    ylab(NULL)
+
+
+  return(patched.titled)
+
+}
+
+tic()
+
+c.Gaussian.fixed <- plot_columns(d,
+                                 "Gaussian",
+                                 "resid.fixed")
+
+toc()
+
+c.Gaussian.random <- plot_columns(d,
+                                  "Gaussian",
+                                  "resid.random")
+
+c.Chi2.fixed <- plot_columns(d,
+                             "Chi2",
+                             "resid.fixed")
+
+c.Chi2.random <- plot_columns(d,
+                              "Chi2",
+                              "resid.random")
+
+patched.Gaussian <- c.Gaussian.fixed + c.Gaussian.random +
+  plot_layout(guides = "collect") +
+  plot_annotation(title = TeX("Gaussian-distributed means $\\phantom{\\chi^2}$"),
+                  subtitle = " ",
+                  theme = theme(plot.title =
+                                  element_text(size = 30,
+                                               family = "CMU Serif",
+                                               hjust = 0.5))
+  ) &
+  theme(legend.position = "bottom")
+
+
+patched.Chi2 <- c.Chi2.fixed + c.Chi2.random +
+  plot_layout(ncol = 2) +
+  plot_annotation(title = TeX("$\\chi^2$-distributed means"),
+                  subtitle = " ",
+                  theme = theme(plot.title =
+                                  element_text(size = 30,
+                                               family = "CMU Serif",
+                                               hjust = 0.5))
+  ) &
+  theme(legend.position = "bottom")
 
 
 
-plot.all(d,
-         measure = "MSE")
+
+patched.four.columns <- patched.Gaussian + patched.Chi2
+
+
+ggsave(paste0("meeeh5.pdf"),
+       patched.four.columns,
+       width = 30,
+       height = 21,
+       units = "in")
+
+
+
+  plot_histogram + ggtitle()
+
+plot_histogram / plot_histogram / plot_histogram
+
