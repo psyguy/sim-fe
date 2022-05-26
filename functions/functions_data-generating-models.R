@@ -65,6 +65,9 @@ dgm_nar <- function(...){
   if(is.null(pa$T)) pa$T <- 100
   if(is.null(pa$seed)) pa$seed <- 0
 
+  ## Making sure var.marginal and var.resid are correctly related
+  pa$var.marginal <- pa$var.resid / (1 - pa$phi ^ 2)
+
   ### first make time series centered around zero
   ## drawing the first sample x_cent_1
   set.seed(pa$seed)
@@ -96,8 +99,7 @@ dgm_nar <- function(...){
   )
 
   ## making a LaTeX-ready list description of the model
-  Model.Description <- paste0("$NAR(1):", # \\; with",
-                              "\\; \\mu = ",
+  Model.Description <- paste0("\\mu = ",
                               round(pa$Mean,2),
                               "(",
                               round(Empirical.Parameters$Mean,2),
@@ -121,9 +123,22 @@ dgm_nar <- function(...){
                               pa$T,
                               "$")
 
+  Model.Description.Short <- paste0("$\\mu = ",
+                                    round(pa$Mean, 2),
+                                    ",\\; \\sigma^2_{\\epsilon} = ",
+                                    round(pa$var.resid, 2),
+                                    ",\\; \\phi = ",
+                                    round(pa$phi, 2),
+                                    "\\; \\rightarrow",
+                                    "\\; \\gamma = ",
+                                    round(Empirical.Parameters$Skewness,2),
+                                    "$")
+
+
   ## making the output object
   output <- list(x = x,
                  Model.Description = Model.Description,
+                 Model.Description.Short = Model.Description.Short,
                  Model.Parameters = pa,
                  Empirical.Parameters = Empirical.Parameters)
 
@@ -195,9 +210,22 @@ dgm_chiar <- function(...){
                               pa$T,
                               "$")
 
+  Model.Description.Short <- paste0("$c = ",
+                                    round(pa$c,2),
+                                    ",\\; \\nu = ",
+                                    round(pa$nu, 2),
+                                    ",\\; \\phi = ",
+                                    round(pa$phi, 2),
+                                    "\\; \\rightarrow",
+                                    "\\; \\mu = ",
+                                    round(Empirical.Parameters$Mean, 2),
+                                    ",\\; \\gamma = ",
+                                    round(Empirical.Parameters$Skewness,2),
+                                    "$")
   ## making the output object
   output <- list(x = x,
                  Model.Description = Model.Description,
+                 Model.Description.Short = Model.Description.Short,
                  Model.Parameters = pa,
                  Empirical.Parameters = Empirical.Parameters)
 
@@ -411,12 +439,26 @@ dgm_binar <- function(...){
                               pa$T,
                               "$")
 
+  Model.Description.Short <- paste0("$k =",
+                                    round(pa$k,2),
+                                    ",\\; \\alpha = ",
+                                    round(pa$alpha,2),
+                                    ",\\; \\beta = ",
+                                    round(pa$beta,2),
+                                    "\\; \\rightarrow",
+                                    "\\; \\mu = ",
+                                    round(Empirical.Parameters$Mean, 2),
+                                    "\\; \\rho = ",
+                                    round(Empirical.Parameters$AR, 2),
+                                    ",\\; \\gamma = ",
+                                    round(Empirical.Parameters$Skewness,2),
+                                    "$")
   ## making the output object
   output <- list(x = x,
                  Model.Description = Model.Description,
+                 Model.Description.Short = Model.Description.Short,
                  Model.Parameters = pa,
-                 Empirical.Parameters = Empirical.Parameters
-  )
+                 Empirical.Parameters = Empirical.Parameters)
 
   return(output)
 }
@@ -563,12 +605,25 @@ dgm_podar <- function(...){
                               "$")
 
 
+  Model.Description.Short <- paste0("$\\lambda = ",
+                                    round(pa$lambda,3),
+                                    ",\\; \\tau = ",
+                                    round(pa$tau, 2),
+                                    "\\; \\rightarrow",
+                                    "\\; \\mu = ",
+                                    round(Empirical.Parameters$Mean, 2),
+                                    "\\; \\rho = ",
+                                    round(Empirical.Parameters$AR, 2),
+                                    ",\\; \\gamma = ",
+                                    round(Empirical.Parameters$Skewness,2),
+                                    "$")
   ## making the output object
   output <- list(x = x,
                  Model.Description = Model.Description,
+                 Model.Description.Short = Model.Description.Short,
                  Model.Parameters = pa,
-                 Empirical.Parameters = Empirical.Parameters
-  )
+                 Empirical.Parameters = Empirical.Parameters)
+
 
   return(output)
 }
