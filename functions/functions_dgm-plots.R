@@ -20,6 +20,7 @@ shelf(latex2exp)
 shelf(viridis)
 shelf(ggtext)
 shelf(patchwork)
+shelf(ggthemes)
 # rm(list = ls())
 
 source("functions/functions_data-generating-models.R")
@@ -28,7 +29,7 @@ source("functions/functions_data-generating-models.R")
 
 # https://stackoverflow.com/a/51906008/2275986
 
-library(showtext)
+shelf(showtext)
 
 # Check the current search path for fonts
 font_paths()
@@ -129,9 +130,9 @@ plot_dgm.profile <- function(d,
               alpha = 1,
               size = 1) +
     geom_hline(aes(yintercept = Mean),
-               size = 1,
+               size = 0.75,
                linetype = "dashed",
-               color = "honeydew4") +
+               color = "honeydew3") +
     # geom_point(size = 0.1) +
     # expand_limits(x = range(d$t),
     #               y = range(d$value)) +
@@ -151,7 +152,7 @@ plot_dgm.profile <- function(d,
       # axis.line.x = element_line(colour = "black"),
       panel.background = element_blank()) +
     scale_colour_manual(values = p.colors,
-                        labels = unname(TeX(unique(d$obj.id)))
+                        labels = unname(TeX(unique(as.character(d$obj.id))))
     )
 
   # p_ts
@@ -192,9 +193,9 @@ plot_dgm.profile <- function(d,
                        xend = Mean,
                        y = 0,
                        yend = 1),
-                 size = 1,
+                 size = 0.75,
                  linetype = "dashed",
-                 color = "honeydew4") +
+                 color = "honeydew3") +
     # geom_text(
     #   # "label",
     #   aes(x = Mean,
@@ -205,7 +206,7 @@ plot_dgm.profile <- function(d,
     #   #                function(x){TeX(x, output = "character")}
     #   #                )
     #   ),
-    #   color = "honeydew4",
+    #   color = "honeydew3",
     # ) +
       theme_tufte() +
     ggtitle("Marginal distribution") +
@@ -228,7 +229,7 @@ plot_dgm.profile <- function(d,
       # axis.line = element_line(colour = "black"),
       panel.background = element_blank()) +
     scale_fill_manual(values = p.colors,
-                       labels = unname(TeX(unique(d$obj.id)))
+                      unname(TeX(unique(as.character(d$obj.id))))
     )
 
 
@@ -266,13 +267,13 @@ plot_dgm.profile <- function(d,
               aes(x = lag,
                   y = acf),
               linetype = 2,
-              color = "honeydew4",
-              size = 1) +
+              color = "honeydew3",
+              size = 0.75) +
     facet_wrap(~obj.id,
                nrow = 3) +
     geom_hline(aes(yintercept = 0),
                size = 0.5) +
-    ggtitle("Autocorrelation function") +
+    ggtitle("Sample ACF") +
     theme_tufte() +
     theme(strip.background = element_blank(),
           strip.text = element_blank(),
@@ -300,7 +301,7 @@ plot_dgm.profile <- function(d,
       # axis.line = element_line(colour = "black"),
       panel.background = element_blank()) +
     scale_color_manual(values = p.colors,
-                       labels = unname(TeX(unique(d$obj.id)))
+                       unname(TeX(unique(as.character(d$obj.id))))
     )
 
 
@@ -308,14 +309,27 @@ plot_dgm.profile <- function(d,
 
   leg <- cowplot::get_legend(p_ts +
                                guides(color = guide_legend(override.aes = list(size = 7)))+
-                               theme(legend.position = "bottom")
-)
+                               theme(legend.position = "bottom",
+                                     legend.direction="vertical",
+                                     legend.justification = "left",
+                                     legend.spacing.x = unit(10, "mm"),
+                                     legend.spacing.y = unit(10, "mm"),
+                                     legend.text =
+                                       element_text(size = 20, vjust = .5, hjust = .3)
+                                     )
+                             )
+
+  leg <- plot_grid(NULL, leg,
+                   nrow = 1,
+                   rel_widths = c(0.1, 10))
 
   p_profile.main <- p_ts + plot_spacer() + p_hist + plot_spacer() + p_acf +
-  plot_layout(widths = c(4, 0.1, 1, 0.1, 2)) &
+  plot_layout(widths = c(4, 0.05, 1.5, 0.05, 2)) &
     theme(
+      # legend.key.width = unit(2, "line"),
+      # legend.text=element_text(size=10),
       # legend.position = "none",
-      plot.title = element_text(size = 15,
+      plot.title = element_text(size = 15+5,
                           family = "Merriweather Regular")
     )
 
@@ -323,19 +337,27 @@ plot_dgm.profile <- function(d,
   plot_annotation(title = TeX(Model.name),
                   subtitle = " ",
                     theme = theme(plot.title =
-                                    element_text(size = 25,
+                                    element_text(size = 25+5,
                                                  family = "CMU Serif",
                                                  hjust = 0.5),
                                   plot.subtitle =
                                     element_text(size = 5,
                                                  family = "CMU Serif",
-                                                 hjust = 0.5))
+                                                 hjust = 0.5)
+                                  )
     )
 
-  p_out <- plot_grid(p_out,
+  p_out <- plot_grid(NULL,
+                     p_out,
+                     NULL,
                      leg,
+                     NULL,
                      ncol = 1,
-                     rel_heights = c(10,1))
+                     rel_heights = c(0.1,
+                                     10,
+                                     0.1,
+                                     2,
+                                     0.6))
   return(p_out)
 
 }

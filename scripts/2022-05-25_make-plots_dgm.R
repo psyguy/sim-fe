@@ -39,31 +39,32 @@ colors.podar.orchid <- c("orchid2",
 ts.length <- 500
 
 d.3.nar <- make_dgm_df(dgm_nar(phi = 0.4,
-                                var.resid = 15,
+                                var.resid = 20,
                                 T = ts.length,
-                                Mean = 60,
+                                Mean = 85,
                                 seed = 1),
-                        dgm_nar(phi = 0.4,
+                        dgm_nar(phi = 0.8,
                                 var.resid = 20,
                                 T = ts.length,
-                                Mean = 40,
-                                seed = 2),
-                        dgm_nar(phi = 0.2,
-                                var.resid = 20,
+                                Mean = 55,
+                                seed = 2+2),
+                        dgm_nar(phi = 0.4,
+                                var.resid = 47,
                                 T = ts.length,
                                 Mean = 20,
-                                seed = 3)
-)
+                                seed = 3+2)
+                       )
 
 profile_nar <- plot_dgm.profile(d.3.nar,
                                   colors.nar.khaki,
                                   "$AR(1)$")
 
-ggsave("Profile NAR.pdf",
+  ggsave("Profile NAR.pdf",
        profile_nar,
-       height = 10*2,
+       height = 10*2.2,
        width = 21*2,
        units = "cm")
+
 
 
 
@@ -85,7 +86,7 @@ d.3.chiar <- make_dgm_df(dgm_generator(Model = "ChiAR",
                                        T = ts.length,
                                        # Mean = 10,
                                        seed = 3)
-)
+                         )
 
 
 profile_chiar <- plot_dgm.profile(d.3.chiar,
@@ -94,7 +95,7 @@ profile_chiar <- plot_dgm.profile(d.3.chiar,
 
 ggsave("Profile Chi2AR.pdf",
        profile_chiar,
-       height = 10*2,
+       height = 10*2.7,
        width = 21*2,
        units = "cm")
 
@@ -143,17 +144,17 @@ d.3.podar <- make_dgm_df(dgm_generator(Model = "PoDAR",
                                        tau = 0.4,
                                        Mean = 40,
                                        T = ts.length,
-                                       seed = 1+11),
+                                       seed = 1+26),
                          dgm_generator(Model = "PoDAR",
-                                       tau = 0.6,
+                                       tau = 0.8,
                                        Mean = 10,
                                        T = ts.length,
-                                       seed = 2),
+                                       seed = 2+16),
                          dgm_generator(Model = "PoDAR",
                                        tau = 0.4,
                                        Mean = 1.,
                                        T = ts.length,
-                                       seed = 3+1)
+                                       seed = 3+13)
                          )
 
 
