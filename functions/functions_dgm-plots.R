@@ -88,9 +88,18 @@ make_dgm_df <- function(obj.1,
 plot_dgm.profile <- function(d,
                   # y.range = c(0, 100),
                   p.colors = colors.nar.khaki,
-                  Model.name = "NAR(1)"){
+                  Model.name = "NAR(1)",
+                  burnin_proportion = 0.9){
 
   ### Preparing the data
+
+  ## Choosing histogram binwidth
+
+  # binwidth_ <- ifelse(grepl("bina", tolower(Model.name), fixed=TRUE),
+  #                    0.3,
+  #                    1)
+
+  binwidth_ <- 0.5
 
   ## To make sure the plot title has the same height as Chi2AR model
   Model.name <- paste("$\\phantom{\\chi^2}$",
@@ -98,6 +107,11 @@ plot_dgm.profile <- function(d,
                       "$\\phantom{\\chi^2}$")
 
   d$obj.id <- d$obj.id %>% factor(unique(d$obj.id))
+  d <- d %>%
+    filter(t > max(d$t)*burnin_proportion) %>%
+    mutate(t = t - burnin_proportion*max(t))
+  # d$t <- d$t - length(d$t)
+
 
   acf.lag.max <- 10
 
@@ -138,12 +152,17 @@ plot_dgm.profile <- function(d,
     #               y = range(d$value)) +
     # scale_y_continuous(breaks = (0:max_scale_value))
     ggtitle("Time series") +
+    xlab("t") +
     theme(
       axis.title.y = element_blank(),
       # axis.text.y = element_blank(),
       # axis.ticks.y = element_blank(),
       legend.position = "none", # c(0.1,0.95),
       legend.background = element_rect(colour = NA, fill = NA),
+      axis.title.x = element_text(size = 17,
+                                  family = "Merriweather Regular"),
+      axis.text = element_text(size = 20,
+                                  family = "Merriweather Regular"),
       # legend.key.size = unit(2, "cm"),
       legend.text.align	= 0,
       legend.title = element_blank(),
@@ -175,7 +194,7 @@ plot_dgm.profile <- function(d,
                fill = obj.id)) +
       geom_histogram(aes(y=..ndensity..),
                      center = 0,
-                     binwidth = 1) +
+                     binwidth = binwidth_) +
     # geom_histogram(#binwidth = binwidth,
     #                aes(fill = obj.id),
     #                center = 0) +
@@ -210,10 +229,13 @@ plot_dgm.profile <- function(d,
     # ) +
       theme_tufte() +
     ggtitle("Marginal distribution") +
+    xlab("X") +
     scale_y_continuous(limits = c(min(d_acf$acf), 1)) +
     theme(strip.background = element_blank(),
           strip.text = element_blank(),
-          axis.title = element_blank(),
+          axis.title.x = element_text(size = 17,
+                                      family = "Merriweather Regular"),
+          # axis.title.x = element_blank(),
           axis.ticks.y = element_blank(),
           axis.text.y = element_blank(),
           axis.title.y = element_blank(),
@@ -278,6 +300,8 @@ plot_dgm.profile <- function(d,
     theme(strip.background = element_blank(),
           strip.text = element_blank(),
           axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 17,
+                                    family = "Merriweather Regular"),
           # axis.ticks.y = element_blank(),
           # axis.text.y = element_blank(),
           # axis.title.y = element_blank(),
@@ -307,21 +331,21 @@ plot_dgm.profile <- function(d,
 
   # leg <- as_ggplot(cowplot::get_legend(p_hist))
 
-  leg <- cowplot::get_legend(p_ts +
-                               guides(color = guide_legend(override.aes = list(size = 7)))+
-                               theme(legend.position = "bottom",
-                                     legend.direction="vertical",
-                                     legend.justification = "left",
-                                     legend.spacing.x = unit(10, "mm"),
-                                     legend.spacing.y = unit(10, "mm"),
-                                     legend.text =
-                                       element_text(size = 20, vjust = .5, hjust = .3)
-                                     )
-                             )
-
-  leg <- plot_grid(NULL, leg,
-                   nrow = 1,
-                   rel_widths = c(0.1, 10))
+  # leg <- cowplot::get_legend(p_ts +
+  #                              guides(color = guide_legend(override.aes = list(size = 7)))+
+  #                              theme(legend.position = "bottom",
+  #                                    legend.direction="vertical",
+  #                                    legend.justification = "left",
+  #                                    legend.spacing.x = unit(10, "mm"),
+  #                                    legend.spacing.y = unit(10, "mm"),
+  #                                    legend.text =
+  #                                      element_text(size = 20, vjust = .5, hjust = .3)
+  #                                    )
+  #                            )
+  #
+  #   leg <- plot_grid(NULL, leg,
+  #                    nrow = 1,
+  #                    rel_widths = c(0.1, 10))
 
   p_profile.main <- p_ts + plot_spacer() + p_hist + plot_spacer() + p_acf +
   plot_layout(widths = c(4, 0.05, 1.5, 0.05, 2)) &
@@ -329,35 +353,42 @@ plot_dgm.profile <- function(d,
       # legend.key.width = unit(2, "line"),
       # legend.text=element_text(size=10),
       # legend.position = "none",
+      axis.text = element_text(size = 17,
+                               family = "Merriweather Regular"),
       plot.title = element_text(size = 15+5,
                           family = "Merriweather Regular")
     )
 
-  p_out <- p_profile.main +
-  plot_annotation(title = TeX(Model.name),
-                  subtitle = " ",
-                    theme = theme(plot.title =
-                                    element_text(size = 25+5,
-                                                 family = "CMU Serif",
-                                                 hjust = 0.5),
-                                  plot.subtitle =
-                                    element_text(size = 5,
-                                                 family = "CMU Serif",
-                                                 hjust = 0.5)
-                                  )
-    )
+  p_out <- p_profile.main
+  # +
+  # plot_annotation(
+  #   # title = TeX(Model.name),
+  #   #               subtitle = " ",
+  #                   theme = theme(axis.text = element_text(size = 15,
+  #                                                            family = "Merriweather Regular"))
+  #                     # plot.title =
+  #                     #               element_text(size = 25+5,
+  #                     #                            family = "CMU Serif",
+  #                     #                            hjust = 0.5),
+  #                     #             plot.subtitle =
+  #                     #               element_text(size = 5,
+  #                     #                            family = "CMU Serif",
+  #                     #                            hjust = 0.5)
+  #                     #             )
+  #   )
 
-  p_out <- plot_grid(NULL,
-                     p_out,
-                     NULL,
-                     leg,
-                     NULL,
-                     ncol = 1,
-                     rel_heights = c(0.1,
-                                     10,
-                                     0.1,
-                                     2,
-                                     0.6))
+  # p_out <- plot_grid(NULL,
+  #                    p_out,
+  #                    NULL,
+  #                    leg,
+  #                    NULL,
+  #                    ncol = 1,
+  #                    rel_heights = c(0.1,
+  #                                    10,
+  #                                    0.1,
+  #                                    2,
+  #                                    0.6))
+
   return(p_out)
 
 }

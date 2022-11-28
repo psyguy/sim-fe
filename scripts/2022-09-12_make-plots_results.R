@@ -12,6 +12,7 @@ library(cowplot)
 library(patchwork)
 library(latex2exp)
 library(ggpubr)
+library(RColorBrewer)
 
 library(tikzDevice)
 
@@ -175,11 +176,15 @@ levels(d_important$`Model name`) <- c(`NAR(1)` = "AR(1)",
                                       `BinAR(1)` = "BinAR(1)",
                                       `PoDAR(1)` = "PoDAR(1)")
 
+dimp <- d_important %>%
+  complete()
+
+
 #  summary plots ----------------------------------------------------------
 
 plot_Model.x.Resid <- function(d_important,
                                which.parameter,
-                               which.measure = "Bias",
+                               which.measure = "Positive error",
                                Means.dist = c("Gaussian", "Chi2"),
                                line.width = 1,
                                font.scale = 5){
@@ -217,18 +222,21 @@ plot_Model.x.Resid <- function(d_important,
            tolower(which.measure),
            fixed=TRUE)){
     which.measure <- "Type-1 error"
-    ddd$value <- 100- (ddd %>% pull(which.measure))
+    ddd$value <- 100 - (ddd %>% pull(which.measure))
     ddd <- ddd %>% filter(sign.X.sig == "Zero")
     y.axis <- "Total error"
   }
 
 
   y.range <- ddd$value %>% range()
-  y.range[1] <- min(-0.01, y.range[1])
-  y.range[2] <- max(0.01, y.range[2])
+  y.range[1] <- min(-0.001, y.range[1])
+  y.range[2] <- max(0.001, y.range[2])
 
-  ddd <- ddd %>%
-    filter(l2.dist == Means.dist)
+  ddd <- ddd  %>%
+    filter(l2.dist == Means.dist) %>%
+    ungroup() %>%
+    complete(Resid, `Model name`, N, T,
+             fill = list(value = 0))
 
   ddd$N <- as.factor(ddd$N)
   ddd$T <- as.factor(ddd$T)
@@ -259,13 +267,14 @@ plot_Model.x.Resid <- function(d_important,
               alpha = 0.8,
               lineend = "round") +
     geom_point(size = rel(1.5), alpha = 1) +
-    scale_color_viridis(
-      discrete = TRUE,
-      begin = 0.2,
-      end = 0.7,
-      direction = -1,
-      option = "inferno"
-    ) +
+    scale_color_manual(values = brewer.pal(name = "PuRd", n = 9)[c(4, 6, 9)]) +
+    # scale_color_viridis(
+    #   discrete = TRUE,
+    #   begin = 0.2,
+    #   end = 0.7,
+    #   direction = -1,
+    #   option = "inferno"
+    # ) +
     facet_grid(
       rows = vars(`Model name`),
       cols = vars(Resid),
@@ -312,13 +321,14 @@ plot_Model.x.Resid <- function(d_important,
                 alpha = 0.8,
                 lineend = "round") +
       geom_point(size = rel(1.5), alpha = 1) +
-      scale_color_viridis(
-        discrete = TRUE,
-        begin = 0.2,
-        end = 0.7,
-        direction = -1,
-        option = "inferno"
-      ) +
+      scale_color_manual(values = brewer.pal(name = "PuRd", n = 9)[c(4, 6, 9)]) +
+      # scale_color_viridis(
+      #   discrete = TRUE,
+      #   begin = 0.2,
+      #   end = 0.7,
+      #   direction = -1,
+      #   option = "inferno"
+      # ) +
       facet_grid(
         rows = vars(`Model name`),
         cols = vars(Resid),
@@ -343,14 +353,23 @@ plot_Model.x.Resid <- function(d_important,
                             family = "CMU Serif"),
         ## remove grid lines
         panel.grid.major.y = element_blank()
-      ) +
+      )
        # add thresholds
-      geom_hline(yintercept = 2.5,
-                 linetype = "dotted",
-                 alpha = 0.7) +
-      geom_hline(yintercept = 5,
-                 linetype = "dashed",
-                 alpha = 0.7)
+      # geom_hline(yintercept = 2.5,
+      #            linetype = "dotted",
+      #            alpha = 0.7) +
+    if (y.axis == "Total error")
+      output.plot <- output.plot +
+        geom_hline(yintercept = 5,
+                   linetype = "dashed",
+                   alpha = 0.7)
+
+    if (y.axis != "Total error")
+      output.plot <- output.plot +
+        geom_hline(yintercept = 2.5,
+                   linetype = "dashed",
+                   alpha = 0.7)
+
   }
 
   output.plot <- output.plot +
@@ -429,9 +448,13 @@ plot_quadrants <- function(d_important,
                    )
                    }
 
+
   p.final <- p.patchwork +
     plot_layout(guides = "collect") +
-    plot_annotation(title = TeX(title),
+    plot_annotation(##
+                    ## removed the big title and subtitle  here
+                    ##
+                    #title = TeX(title),
                     # subtitle = " ",
                     theme = theme(plot.title =
                                     element_text(size = 20,
@@ -447,54 +470,40 @@ plot_quadrants <- function(d_important,
 
 # Making the 4-quadrant plots ---------------------------------------------
 
-## Choose a parameter
 
-parameter <- "Correlation"
-parameter <- "Covariance"
-# parameter <- "Fixed.Phi"
+for (parameter in c("Correlation", "Covariance")) {
+  for (upper_lower in list(c("Bias", "RMSE"),
+                           c("Bias", "Variance"),
+                           c("Bias", "MAE"),
+                           c("Positive error", "Negative error"))) {
+    upper <- upper_lower[1]
+    lower <- upper_lower[2]
 
-
-## Choose measures to be plotted in the upper and lower quadrants\
-
-upper <- "Bias"
-lower <- "RMSE"
-
-upper <- "Bias"
-lower <- "Variance"
-
-upper <- "Bias"
-lower <- "MAE"
-
-# upper <- "Type-1 error"
-# lower <- "Relative efficiency"
-
-upper <- "Positive error"
-lower <- "Negative error"
-
-
-
-## Plotting
-
-(p.q <- plot_quadrants(d_important,
-                      parameter,
-                      upper,
-                      lower)) %>%
-## Saving the plot
-ggsave(paste0(parameter,
-              " (",
-              upper,
-              " and ",
-              lower,
-              ").pdf"),
-       .,
-       width = 21,
-       height = 30,
-       units = "cm")
-
+    (p.q <- plot_quadrants(d_important,
+                           parameter,
+                           upper,
+                           lower)) %>%
+      ## Saving the plot
+      ggsave(
+        paste0(parameter,
+               " (",
+               upper,
+               " and ",
+               lower,
+               ").pdf"),
+        .,
+        width = 21,
+        height = 30,
+        units = "cm"
+      )
+  }
+}
 
 
 # Plotting total Type-I error rate ----------------------------------------
 
+parameter <- "Covariance"
+parameter <- "Correlation"
 
 p.error.left <- plot_Model.x.Resid(d_important,
                                    parameter,
@@ -515,13 +524,15 @@ p.error.right <- plot_Model.x.Resid(d_important,
 p.patchwork <- (p.error.left | p.error.right)
 
 
-  title <- paste("Type-I error rates in the estimated",
-                 tolower(parameter)
-                 )
+title <- paste("Type-I error rate in the estimated",
+               tolower(parameter)
+)
 
 p.final <- p.patchwork +
   plot_layout(guides = "collect") +
-  plot_annotation(title = TeX(title),
+  plot_annotation(
+                  ## removed the big title and subtitle  here
+                  ##title = TeX(title),
                   theme = theme(plot.title =
                                   element_text(size = 20,
                                                family = "CMU Serif",
@@ -535,6 +546,58 @@ ggsave(paste0(parameter,
               " (Type-1 error).pdf"),
        p.final,
        width = 21,
-       height = 21.5*30/37,
+       height = 21.5*30/37 - 1,
+       units = "cm")
+
+
+
+# Plotting estimation variances (in half-page plots) ---------------------
+
+parameter <- "Covariance"
+parameter <- "Correlation"
+
+p.var.left <- plot_Model.x.Resid(d_important,
+                                   parameter,
+                                   "Variance",
+                                   "Gaussian",
+                                   line.width,
+                                   font.scale)
+
+
+p.var.right <- plot_Model.x.Resid(d_important,
+                                    parameter,
+                                    "Variance",
+                                    "Chi2",
+                                    line.width,
+                                    font.scale) + ylab(NULL)
+
+
+p.patchwork <- (p.var.left | p.var.right)
+
+
+title <- paste("Estimation variance in the estimated",
+               tolower(parameter)
+)
+
+p.final <- p.patchwork +
+  plot_layout(guides = "collect") +
+  plot_annotation(
+                  ## removed the big title and subtitle  here
+                  ##title = TeX(title),
+                  theme = theme(plot.title =
+                                  element_text(size = 20,
+                                               family = "CMU Serif",
+                                               hjust = 0.5))
+  ) &
+  theme(legend.position = "bottom")
+# &
+#   scale_y_continuous(limits = c(0, NA))
+
+
+ggsave(paste0(parameter,
+              " (estimation variance).pdf"),
+       p.final,
+       width = 21,
+       height = 21.5*30/37 - 1,
        units = "cm")
 

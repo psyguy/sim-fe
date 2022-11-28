@@ -379,7 +379,7 @@ dgm_binar <- function(...){
   ## setting default seed if not given
   if(is.null(pa$alpha)) pa$alpha <- 0.5
   if(is.null(pa$beta)) pa$beta <- 0.4
-  if(is.null(pa$k)) pa$k <- 6
+  if(is.null(pa$k)) pa$k <- 10
   if(is.null(pa$T)) pa$T <- 100
   if(is.null(pa$seed)) pa$seed <- 0
 
@@ -1132,7 +1132,7 @@ dgm_as.dataframe <- function(dgm_object, subject = 0){
 
 #+ dgmMakePopulation
 
-dgm_make.population <- function(Model = "ChiAR(1)",
+dgm_make.sample <- function(Model = "ChiAR(1)",
                                 Means = rnorm(100, 5, 3),
                                 T = 100,
                                 phi = 0.4,
@@ -1165,7 +1165,7 @@ dgm_make.population <- function(Model = "ChiAR(1)",
 
 # Make population ---------------------------------------------------------
 
-make_population <- function(Model = "DAR",
+make_datasets <- function(Model = "DAR",
                             T = 100,
                             N = 100,
                             phi = 0.4,
@@ -1228,7 +1228,7 @@ make_population <- function(Model = "DAR",
   Means <- Means %>% na.omit() %>% sample(N)
 
 
-  sample_df <- dgm_make.population(
+  sample_df <- dgm_make.sample(
     Model = Model,
     Means = Means,
     T = T,

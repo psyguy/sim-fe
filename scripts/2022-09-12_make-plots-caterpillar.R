@@ -70,25 +70,28 @@ levels(d$sign.X.sig) <- c("Significant negative estimates",
 #            l2.dist,
 #            Model)
 
-# plot_scatter <-
-
 
 plot_caterpillar <- function(d,
                              l2.dist_ = "Chi2",
                              Model_ = "PoDAR",
                              analysis.type = "resid.fixed",
-                             legend.key.width = 5) {
+                             parameter = "covariance",
+                             legend.key.width = 5,
+                             legend.line.width = 10) {
 
   title <- ifelse(analysis.type == "resid.fixed",
                   "fixed residual variance",
                   "random residual variance") %>%
     paste("Modeled with", .)
 
-  d %>%
+  dd <- d %>%
     filter(l2.dist == l2.dist_,
-           Model == Model_) %>%
+           Model == Model_)
     # filter(N == 100,
     #        T == 100) %>%
+  y.range <- c(min(dd$lower_2.5ci), max(dd$upper_2.5ci))
+
+  dd %>%
     filter(type == analysis.type) %>%
     # sample_n(100) %>%
     ggplot() +
@@ -108,8 +111,8 @@ plot_caterpillar <- function(d,
       aes(
         x = ord,
         xend = ord,
-        y = est + 0.01,
-        yend = est - 0.01
+        y = est + min(0.01, 0.05*abs(upper_2.5ci - lower_2.5ci)),
+        yend = est - min(0.01, 0.05*abs(upper_2.5ci - lower_2.5ci))
       ),
       alpha = 0.8+0.2,
       color = "white",
@@ -127,18 +130,19 @@ plot_caterpillar <- function(d,
                linetype = "solid",
                size = rel(0.15),
                color = "black",
-               alpha = 1) +
+               alpha = 0.8) +
     theme_pubclean() +
     # from paletteer::paletteer_d("khroma::sunset")
-    guides(colour = guide_legend(override.aes = list(size = rel(1),
+    guides(colour = guide_legend(override.aes = list(linewidth = rel(1.5),
                                                      alpha = 1))) +
     scale_color_manual(values =
                          c("#F67E4BFF",
                            "#98CAE1FF",
                            "#364B9AFF")) +
-    facet_grid(rows = vars(TT),
+    scale_y_continuous(limits = y.range) +
+    facet_grid(rows = vars(NN),
                # rows = vars(rev(TT)),
-               cols = vars(NN)) +
+               cols = vars(TT)) +
     ggtitle(title) +
     theme(
       legend.background = element_rect(colour = NA, fill = NA),
@@ -146,42 +150,88 @@ plot_caterpillar <- function(d,
       legend.title = element_blank(),
       axis.title.x = element_blank(),
       axis.ticks.x = element_blank(), # "Score",
-      # axis.title.y = "Density",
       axis.text.x = element_blank(),
-      legend.key.width = unit(legend.key.width, "mm"),
-      axis.text.y = element_text(size = 5),
+      legend.key.width = unit(legend.key.width*2, "mm"),
+      axis.text.y = element_text(size = 10),
       text = element_text(family = "CMU Serif",
-                          size = 10)
+                          size = 12)
       # plot.title =
       #   element_text(size = 10,
       #                family = "CMU Serif",
       #                hjust = 0)
     ) +
-    xlab(NULL) + ylab(NULL)
+    xlab(NULL) +
+    ylab(paste("Estimated", parameter))
 
 }
 
 
-caterpillar_podar_fixed <- plot_caterpillar(d,
-                                            l2.dist = "Chi2",
-                                            Model = "PoDAR",
-                                            analysis.type = "resid.fixed")
-caterpillar_podar_random <- plot_caterpillar(d,
-                                             l2.dist = "Chi2",
-                                             Model = "PoDAR",
-                                             analysis.type = "resid.random")
+
+# Producing the caterpillar plots -----------------------------------------
+
+## Choosing which condition to plot
+
+single_model <- "NAR"
+single_model <- "Chi2AR"
+single_model <- "BinAR"
+single_model <- "PoDAR"
+
+single_model_name <- ifelse(single_model == "Chiar",
+                            "$\\chi^2$AR(1)",
+                            paste0(single_model, "(1)"))
 
 
+single_l2.dist <- "Gaussian"
+single_l2.dist <- "Chi2"
 
-p.patchwork <- caterpillar_podar_fixed / caterpillar_podar_random
+single_l2.dist_name <- ifelse(single_l2.dist == "Chi2",
+                              "$\\chi^2$",
+                              single_l2.dist)
+
+
+model_type <- "resid.fixed"
+model_type <- "resid.random"
+
+
+## Making plots
+
+## Choose whether to have one or two 9-panel caterpillar plot in one sheet
+
+caterpillar_fixed <- plot_caterpillar(d,
+                                      l2.dist = single_l2.dist,
+                                      Model = single_model,
+                                      analysis.type = "resid.fixed")
+caterpillar_random <- plot_caterpillar(d,
+                                       l2.dist = single_l2.dist,
+                                       Model = single_model,
+                                       analysis.type = "resid.random")
+
+p.patchwork <- caterpillar_fixed / caterpillar_random
+
+
+caterpillar_single <- plot_caterpillar(d,
+                                       l2.dist = single_l2.dist,
+                                       Model = single_model,
+                                       analysis.type = model_type)
+
+
+# p.patchwork <- caterpillar_single
+
 
 p.final <- p.patchwork +
   plot_layout(guides = "collect") +
-  plot_annotation(title = TeX("$95\\%$CIs for covariance of PoDAR(1) model with $\\chi^2$-distributed means"),
+  plot_annotation(##
+                  ## removed the big title and subtitle  here
+                  ##
+                  # title = TeX(paste0("$95\\%$CIs for covariance of the ",
+                  #                    single_model_name,
+                  #                    " model with ",
+                  #                    single_l2.dist_name,
+                  #                    "-distributed means")),
                   # subtitle = TeX("Point estimates and $95\\%$CIs for covariance"),
-                  # subtitle = " ",
+
                   theme = theme(plot.title =
-                                  element_text(size = 15,
+                                  element_text(size = 12,
                                                family = "CMU Serif",
                                                hjust = 0.5),
                                 plot.subtitle =
@@ -190,11 +240,144 @@ p.final <- p.patchwork +
                                                hjust = 0.5))
   ) &
   theme(legend.position = "bottom")
+# &
+#   guides(color = guide_legend(override.aes = list(linewidth = rel(2),
+#                                                    alpha = 1)))
+#
+p.final
 
-
-
-ggsave("caterpillar-podar.pdf",
+ggsave(paste0("caterpillar-",
+              single_model,
+              "-",
+              single_l2.dist,
+              "-",
+              "both",
+              # str_replace(model_type, "resid.", ""),
+              ".pdf"),
        p.final,
        width = 18,
-       height = 24,
+       height = 18, #24,
        units = "cm")
+
+
+
+# -------------------------------------------------------------------------
+
+
+list_model <- c("NAR",
+                "Chi2AR",
+                "BinAR",
+                "PoDAR")
+
+list_l2.dist <- c("Gaussian",
+                  "Chi2")
+
+list_model.type <- c("resid.fixed",
+                     "resid.random")
+
+cross2(list_model,
+       list_l2.dist) %>%
+  plyr::l_ply(function(x){
+    single_model <- x[1]
+    single_model_name <- ifelse(single_model == "Chiar",
+                                "$\\chi^2$AR(1)",
+                                paste0(single_model, "(1)"))
+
+    single_l2.dist <- x[2]
+    single_l2.dist_name <- ifelse(single_l2.dist == "Chi2",
+                                  "$\\chi^2$",
+                                  single_l2.dist)
+
+    caterpillar_fixed <- plot_caterpillar(d,
+                                          l2.dist = single_l2.dist,
+                                          Model = single_model,
+                                          analysis.type = "resid.fixed")
+    caterpillar_random <- plot_caterpillar(d,
+                                           l2.dist = single_l2.dist,
+                                           Model = single_model,
+                                           analysis.type = "resid.random")
+
+    p.patchwork <- caterpillar_fixed / caterpillar_random
+
+    p.final <- p.patchwork +
+      plot_layout(guides = "collect") +
+      plot_annotation(
+        theme = theme(plot.title =
+                        element_text(size = 12,
+                                     family = "CMU Serif",
+                                     hjust = 0.5),
+                      plot.subtitle =
+                        element_text(size = 12,
+                                     family = "CMU Serif",
+                                     hjust = 0.5))
+      ) &
+      theme(legend.position = "bottom")
+
+
+    ggsave(paste0("caterpillar-",
+                  single_model,
+                  "-",
+                  single_l2.dist,
+                  "-",
+                  "both",
+                  # str_replace(model_type, "resid.", ""),
+                  ".pdf"),
+           p.final,
+           width = 18,
+           height = 18, #24,
+           units = "cm")
+
+  })
+
+
+cross3(list_model,
+       list_l2.dist,
+       list_model.type) %>%
+  plyr::l_ply(function(x){
+    single_model <- x[1]
+    single_model_name <- ifelse(single_model == "Chiar",
+                                "$\\chi^2$AR(1)",
+                                paste0(single_model, "(1)"))
+
+    single_l2.dist <- x[2]
+    single_l2.dist_name <- ifelse(single_l2.dist == "Chi2",
+                                  "$\\chi^2$",
+                                  single_l2.dist)
+
+    model_type <- x[3]
+
+    caterpillar_single <- plot_caterpillar(d,
+                                           l2.dist = single_l2.dist,
+                                           Model = single_model,
+                                           analysis.type = model_type)
+
+    p.final <- caterpillar_single +
+      plot_layout(guides = "collect") +
+      plot_annotation(
+        theme = theme(plot.title =
+                        element_text(size = 12,
+                                     family = "CMU Serif",
+                                     hjust = 0.5),
+                      plot.subtitle =
+                        element_text(size = 12,
+                                     family = "CMU Serif",
+                                     hjust = 0.5))
+      ) &
+      theme(legend.position = "bottom")
+
+
+    ggsave(paste0("caterpillar-",
+                  single_model,
+                  "-",
+                  single_l2.dist,
+                  "-",
+                  model_type,
+                  # str_replace(model_type, "resid.", ""),
+                  ".pdf"),
+           p.final,
+           width = 18,
+           height = 11, #24,
+           units = "cm")
+
+  })
+

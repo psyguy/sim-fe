@@ -49,7 +49,7 @@ make_dgm.l2gaussian <- function(Model,
 
       for(ns in 1:nsim){
 
-        sample_df <- dgm_make.population(Model = Model,
+        sample_df <- dgm_make.sample(Model = Model,
                                          Means = Means,
                                          T = T,
                                          phi = 0.4,

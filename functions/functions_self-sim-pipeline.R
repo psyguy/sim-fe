@@ -240,7 +240,7 @@ do_sim_parallel <-
 
     snow::clusterExport(cl,
                         c("d",
-                          #"make_population",
+                          #"make_datasets",
                           "alternative.sim.Path",
                           "debug"),
                         envir = environment())
@@ -282,7 +282,7 @@ do_sim_parallel <-
                              # tryRes <-
                              #   try(
 
-                                 output.dataset <- do.call(make_population,
+                                 output.dataset <- do.call(make_datasets,
                                                            arguments)
                                # )
                              # if (is(tryRes,"try-error")){
@@ -339,7 +339,7 @@ do_fit_parallel <-
 
     snow::clusterExport(cl,
                         c("d",
-                          #"make_population",
+                          #"make_datasets",
                           "alternative.fit.Path",
                           "nPROC",
                           # "model_what",

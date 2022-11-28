@@ -10,7 +10,7 @@ rm(list = ls())
 
 # data generating mechanism -----------------------------------------------
 
-make_population <- function(Model = "DAR",
+make_datasets <- function(Model = "DAR",
                             T = 100,
                             N = 100,
                             phi = 0.4,
@@ -59,7 +59,7 @@ make_population <- function(Model = "DAR",
   Means <- Means %>% na.omit() %>% sample(N)
 
 
-  sample_df <- dgm_make.population(
+  sample_df <- dgm_make.sample(
     Model = Model,
     Means = Means,
     T = T,
@@ -228,7 +228,7 @@ debug <- TRUE
 
 ## Start clusters:
 # Export the sim conditions:
-snow::clusterExport(cl, c("d", "make_population", "debug"), envir = environment())
+snow::clusterExport(cl, c("d", "make_datasets", "debug"), envir = environment())
 
 # # Export global objects:
 # if (!missing(export)){
@@ -263,7 +263,7 @@ snow::clusterApplyLB(cl = cl,
                              sim.StartTime <- Sys.time()
 
                              tryRes <-
-                               try(output.dataset <- do.call(make_population, arguments))
+                               try(output.dataset <- do.call(make_datasets, arguments))
                              # if (is(tryRes,"try-error")){
                              #   if (debug){
                              #     browser()
